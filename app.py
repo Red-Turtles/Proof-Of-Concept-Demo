@@ -242,7 +242,7 @@ def upload_file():
         # Clean up uploaded file
         try:
             os.remove(filepath)
-        except:
+        except Exception:
             pass
         
         return jsonify(result)
