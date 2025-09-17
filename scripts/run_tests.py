@@ -56,7 +56,7 @@ def main():
             return 1
         
         print("📦 Installing dependencies...")
-        if not run_command("venv/bin/pip install -r requirements.txt", "Installing dependencies"):
+        if not run_command("venv/bin/pip install -r config/requirements.txt", "Installing dependencies"):
             return 1
     
     # Activate virtual environment
@@ -67,9 +67,10 @@ def main():
     
     # Run linting
     if args.lint or args.type == 'ci':
-        success &= run_command(f"{activate_cmd} && flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics", 
+        run_command(f"{activate_cmd} && pip install flake8", "Installing flake8")
+        success &= run_command(f"{activate_cmd} && flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv,__pycache__,.git", 
                              "Linting check")
-        success &= run_command(f"{activate_cmd} && flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics", 
+        success &= run_command(f"{activate_cmd} && flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=venv,__pycache__,.git", 
                              "Style check")
     
     # Run security checks
@@ -89,13 +90,13 @@ def main():
             test_cmd += " -m 'not slow'"
         
         if args.coverage or args.type == 'ci':
-            test_cmd += " --cov=app --cov-report=html --cov-report=term-missing --cov-report=xml"
+            test_cmd += " --cov=src --cov-report=html --cov-report=term-missing --cov-report=xml"
         
         if args.type == 'unit':
             test_cmd += " -m unit"
         elif args.type == 'integration':
             test_cmd += " -m integration"
-        el        if args.type == 'backend':
+        elif args.type == 'backend':
             test_cmd += " tests/unit/test_app.py tests/unit/test_utils.py"
         
         success &= run_command(test_cmd, "Running tests")
