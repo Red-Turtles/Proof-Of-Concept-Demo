@@ -34,13 +34,16 @@ if __name__ == '__main__':
         print("   - GEMINI_API_KEY for Google Gemini Vision")
         print()
     
+    # Get port from environment or default to 3000
+    port = int(os.getenv('PORT', 3000))
+    
     print("🐢 Starting Turtle Species Identification App...")
-    print("   Open your browser to: http://localhost:3000")
+    print(f"   Open your browser to: http://localhost:{port}")
     print("   Press Ctrl+C to stop the server")
     print()
     
     try:
-        app.run(debug=True, host='0.0.0.0', port=3000)
+        app.run(debug=True, host='0.0.0.0', port=port)
     except KeyboardInterrupt:
         print("\n👋 Server stopped. Goodbye!")
     except Exception as e:
