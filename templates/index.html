@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turtle Species Identifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px 20px;
+            margin: 30px 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background-color: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #f0f2ff;
+        }
+        
+        .upload-icon {
+            font-size: 3em;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .upload-text {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            color: #999;
+            font-size: 0.9em;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .api-selection {
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .api-selection label {
+            display: block;
+            margin: 10px 0;
+            cursor: pointer;
+            color: #555;
+        }
+        
+        .api-selection input[type="radio"] {
+            margin-right: 10px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+            display: none;
+        }
+        
+        .result.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .result h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .result-item {
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .result-label {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐢 Turtle Species Identifier</h1>
+        <p class="subtitle">Upload an image of a turtle to identify its species using AI</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Click to upload or drag and drop</div>
+            <div class="upload-hint">PNG, JPG, JPEG, GIF, BMP, or WEBP (max 16MB)</div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+        
+        <div class="api-selection">
+            <h3>Choose AI Service:</h3>
+            <label>
+                <input type="radio" name="api" value="openai" checked>
+                OpenAI GPT-4 Vision (Recommended)
+            </label>
+            <label>
+                <input type="radio" name="api" value="gemini">
+                Google Gemini Vision
+            </label>
+        </div>
+        
+        <button class="btn" id="identifyBtn" disabled>Identify Species</button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing image...</p>
+        </div>
+        
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const identifyBtn = document.getElementById('identifyBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        let selectedFile = null;
+
+        // File upload handling
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            // Validate file type
+            const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Please select a valid image file (PNG, JPG, JPEG, GIF, BMP, or WEBP)');
+                return;
+            }
+            
+            // Validate file size (16MB)
+            if (file.size > 16 * 1024 * 1024) {
+                alert('File size must be less than 16MB');
+                return;
+            }
+            
+            selectedFile = file;
+            identifyBtn.disabled = false;
+            
+            // Update upload area
+            uploadArea.innerHTML = `
+                <div class="upload-icon">✅</div>
+                <div class="upload-text">File selected: ${file.name}</div>
+                <div class="upload-hint">Click "Identify Species" to analyze</div>
+                <input type="file" id="fileInput" accept="image/*">
+            `;
+            
+            // Re-attach event listeners
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            });
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.createElement('img');
+                preview.src = e.target.result;
+                preview.className = 'preview-image';
+                preview.style.display = 'block';
+                uploadArea.appendChild(preview);
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Identify species
+        identifyBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('api', document.querySelector('input[name="api"]:checked').value);
+            
+            // Show loading
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            identifyBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                // Hide loading
+                loading.style.display = 'none';
+                identifyBtn.disabled = false;
+                
+                // Show result
+                displayResult(data);
+                
+            } catch (error) {
+                loading.style.display = 'none';
+                identifyBtn.disabled = false;
+                displayResult({ error: 'Network error: ' + error.message });
+            }
+        });
+        
+        function displayResult(data) {
+            result.style.display = 'block';
+            
+            if (data.error) {
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <div class="result-item">
+                        <span class="result-label">Error:</span> ${data.error}
+                    </div>
+                `;
+            } else {
+                result.className = 'result success';
+                result.innerHTML = `
+                    <h3>🔍 Identification Result</h3>
+                    <div class="result-item">
+                        <span class="result-label">Is Turtle:</span> ${data.is_turtle ? '✅ Yes' : '❌ No'}
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Species:</span> ${data.species || 'Unknown'}
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Common Name:</span> ${data.common_name || 'Unknown'}
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Confidence:</span> ${data.confidence || 'Unknown'}
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Description:</span> ${data.description || 'No description available'}
+                    </div>
+                    ${data.notes ? `<div class="result-item">
+                        <span class="result-label">Notes:</span> ${data.notes}
+                    </div>` : ''}
+                    ${data.tags ? `<div class="result-item">
+                        <span class="result-label">Tags:</span> ${data.tags.join(', ')}
+                    </div>` : ''}
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
