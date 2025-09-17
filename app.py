@@ -110,7 +110,7 @@ def identify_turtle_species_openai(image_path):
             # Try to parse as JSON, fallback to text if not valid JSON
             try:
                 return json.loads(content)
-            except:
+            except json.JSONDecodeError:
                 return {
                     "is_turtle": True,
                     "species": "Unknown",
@@ -182,7 +182,7 @@ def identify_turtle_species_gemini(image_path):
             # Try to parse as JSON, fallback to text if not valid JSON
             try:
                 return json.loads(content)
-            except:
+            except json.JSONDecodeError:
                 return {
                     "is_turtle": True,
                     "species": "Unknown",
@@ -243,7 +243,7 @@ def upload_file():
         # Clean up uploaded file
         try:
             os.remove(filepath)
-        except:
+        except Exception:
             pass
         
         return jsonify(result)
