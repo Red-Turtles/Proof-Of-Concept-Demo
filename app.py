@@ -135,7 +135,8 @@ def identify_turtle_species_gemini(image_path):
         base64_image = encode_image_to_base64(image_path)
         
         headers = {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
         }
         
         payload = {
@@ -171,7 +172,7 @@ def identify_turtle_species_gemini(image_path):
             }
         }
         
-        response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}", 
+        response = requests.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", 
                                headers=headers, json=payload, timeout=30)
         
         if response.status_code == 200:
