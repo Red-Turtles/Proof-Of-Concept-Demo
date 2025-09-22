@@ -176,66 +176,89 @@ def identify_turtle_species_openai(image_path):
         logger.error(f"Error calling OpenAI API: {str(e)}")
         return {"error": "Service temporarily unavailable"}
 
-def identify_turtle_species_gemini(image_path):
-    """Use Google Gemini Vision to identify turtle species"""
+def identify_turtle_species_together_ai(image_path):
+    """Use Together.ai to identify turtle species"""
     try:
-        api_key = os.getenv('GEMINI_API_KEY')
+        api_key = os.getenv('TOGETHER_API_KEY')
         if not api_key:
-            logger.error("Gemini API key not configured")
+            logger.error("Together.ai API key not configured")
             return {"error": "Service temporarily unavailable"}
         
         base64_image = encode_image_to_base64(image_path)
         
         headers = {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
         }
         
         payload = {
-            "contents": [
+            "model": "Qwen/Qwen2.5-VL-72B-Instruct",
+            "messages": [
                 {
-                    "parts": [
+                    "role": "user",
+                    "content": [
                         {
+                            "type": "text",
                             "text": """Please identify the species of turtle in this image. 
                             Provide the scientific name, common name, and a brief description of key identifying features. 
                             If this is not a turtle or if you cannot clearly identify the species, please state that clearly.
-                            Format your response as JSON with the following structure:
+                            
+                            IMPORTANT: Format your response as valid JSON with the following exact structure:
                             {
                                 "is_turtle": true/false,
-                                "species": "scientific name",
-                                "common_name": "common name",
+                                "species": "scientific name or Unknown",
+                                "common_name": "common name or Unknown", 
                                 "confidence": "high/medium/low",
                                 "description": "key identifying features",
                                 "notes": "any additional notes"
-                            }"""
+                            }
+                            
+                            Make sure to use double quotes and valid JSON syntax."""
                         },
                         {
-                            "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": base64_image
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
                             }
                         }
                     ]
                 }
             ],
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": 500
-            }
+            "max_tokens": 500,
+            "temperature": 0.1
         }
         
-        response = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}", 
+        response = requests.post("https://api.together.xyz/v1/chat/completions", 
                                headers=headers, json=payload, timeout=30)
         
         if response.status_code == 200:
             result = response.json()
-            content = result['candidates'][0]['content']['parts'][0]['text']
-            logger.info("Gemini API call successful")
+            content = result['choices'][0]['message']['content']
+            logger.info("Together.ai API call successful")
             
-            # Try to parse as JSON, fallback to text if not valid JSON
+            # Try to parse as JSON, handle markdown code blocks
             try:
-                return json.loads(content)
-            except json.JSONDecodeError:
-                logger.warning("Gemini response not in expected JSON format")
+                # Clean up the response if it has markdown formatting
+                clean_content = content
+                if content.strip().startswith('```'):
+                    # Remove markdown code blocks
+                    lines = content.strip().split('\n')
+                    json_lines = []
+                    in_json = False
+                    for line in lines:
+                        if line.strip().startswith('```'):
+                            in_json = not in_json
+                            continue
+                        if in_json:
+                            json_lines.append(line)
+                    clean_content = '\n'.join(json_lines)
+                
+                result = json.loads(clean_content)
+                logger.info("Together.ai JSON parsing successful")
+                return result
+            except json.JSONDecodeError as e:
+                logger.warning(f"Together.ai response not in expected JSON format: {str(e)}")
+                logger.warning(f"Raw response: {content[:200]}...")
                 return {
                     "is_turtle": True,
                     "species": "Unknown",
@@ -245,11 +268,11 @@ def identify_turtle_species_gemini(image_path):
                     "notes": "Response was not in expected JSON format"
                 }
         else:
-            logger.error(f"Gemini API error: {response.status_code} - {response.text}")
+            logger.error(f"Together.ai API error: {response.status_code} - {response.text}")
             return {"error": "Service temporarily unavailable"}
             
     except Exception as e:
-        logger.error(f"Error calling Gemini API: {str(e)}")
+        logger.error(f"Error calling Together.ai API: {str(e)}")
         return {"error": "Service temporarily unavailable"}
 
 # Routes
@@ -258,7 +281,7 @@ def index():
     """Serve the main page"""
     return render_template('index.html')
 
-@app.route('/upload', methods=['POST'])
+@app.route('/identify', methods=['POST'])
 def upload_file():
     """Handle file upload and species identification"""
     temp_file_path = None
@@ -294,21 +317,38 @@ def upload_file():
             logger.warning(f"Invalid image file uploaded: {unique_filename}")
             return jsonify({'error': 'Invalid image file'}), 400
         
-        # Get API preference from request
-        api_preference = request.form.get('api', 'openai').lower()
-        logger.info(f"Using API: {api_preference}")
+        # Use Together.ai for species identification
+        logger.info("Using Together.ai for species identification")
+        result = identify_turtle_species_together_ai(temp_file_path)
         
-        # Identify species using selected API
-        if api_preference == 'gemini':
-            result = identify_turtle_species_gemini(temp_file_path)
-        else:  # Default to OpenAI
-            result = identify_turtle_species_openai(temp_file_path)
+        # Prepare image data for display BEFORE cleaning up temp file
+        image_data = None
+        image_mime = None
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                with open(temp_file_path, 'rb') as img_file:
+                    image_data = base64.b64encode(img_file.read()).decode('utf-8')
+                    # Get actual MIME type from file extension
+                    if file.filename.lower().endswith('.png'):
+                        image_mime = 'image/png'
+                    elif file.filename.lower().endswith('.gif'):
+                        image_mime = 'image/gif'
+                    elif file.filename.lower().endswith('.webp'):
+                        image_mime = 'image/webp'
+                    else:
+                        image_mime = 'image/jpeg'  # Default to JPEG
+            except Exception as e:
+                logger.warning(f"Could not encode image for display: {str(e)}")
         
         # Clean up temporary file
         cleanup_temp_file(temp_file_path)
         
         logger.info(f"Successfully processed file: {unique_filename}")
-        return jsonify(result)
+        
+        return render_template('results.html', 
+                             result=result, 
+                             image_data=image_data, 
+                             image_mime=image_mime)
         
     except Exception as e:
         # Log the actual error internally
@@ -318,8 +358,9 @@ def upload_file():
         if temp_file_path:
             cleanup_temp_file(temp_file_path)
         
-        # Return generic error to user
-        return jsonify({'error': 'An error occurred while processing your request'}), 500
+        # Return error page
+        return render_template('results.html', 
+                             result={'error': 'An error occurred while processing your request'})
 
 @app.route('/health')
 def health_check():
