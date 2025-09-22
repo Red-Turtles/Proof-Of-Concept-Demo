@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  turtle-identifier-dev:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - FLASK_ENV=development
+      - FLASK_DEBUG=True
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - UPLOAD_FOLDER=uploads
+      - MAX_CONTENT_LENGTH=16777216
+    volumes:
+      - .:/app
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    command: ["python", "app.py"]
