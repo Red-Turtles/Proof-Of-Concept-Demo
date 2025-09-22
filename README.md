@@ -5,11 +5,10 @@ A simple proof-of-concept web app that uses AI to identify turtle species from u
 ## Features
 
 - Upload turtle images (PNG, JPG, JPEG, GIF, BMP, WEBP)
-- AI-powered species identification using:
-  - OpenAI GPT-4 Vision
-  - Google Gemini Vision
-- Clean, simple web interface
-- Automatic file cleanup
+- AI-powered species identification using Together.ai's Qwen2.5-VL Vision model
+- Clean, modern web interface with yellow header theme
+- Automatic file cleanup and security features
+- Real-time image preview with results
 
 ## Quick Start
 
@@ -36,23 +35,21 @@ A simple proof-of-concept web app that uses AI to identify turtle species from u
 
 ## API Keys Required
 
-- **OpenAI API Key** (for GPT-4 Vision)
-- **Google Gemini API Key** (for Gemini Vision)
+- **Together.ai API Key** (for Qwen2.5-VL Vision model)
 
-Get your keys from:
-- OpenAI: https://platform.openai.com/api-keys
-- Google AI Studio: https://aistudio.google.com/app/apikey
+Get your key from:
+- Together.ai: https://api.together.xyz/settings/api-keys
 
 ## Usage
 
 1. Upload an image of a turtle
-2. Choose your preferred AI service (OpenAI or Gemini)
-3. Click "Identify Species"
-4. View the AI's analysis including:
+2. Click "Identify" to analyze with Together.ai
+3. View the AI's analysis including:
+   - Is Turtle (Yes/No)
    - Scientific name
    - Common name
-   - Confidence level
-   - Key identifying features
+   - Confidence level (High/Medium/Low with visual indicators)
+   - Image preview
 
 ## File Structure
 
@@ -60,7 +57,11 @@ Get your keys from:
 Proof-Of-Concept-Demo/
 ├── app.py                 # Main Flask application
 ├── templates/
-│   └── index.html         # Web interface
+│   ├── index.html         # Main upload interface
+│   └── results.html       # Results display page
+├── static/
+│   └── css/
+│       └── style.css      # Styling (yellow header theme)
 ├── uploads/               # Temporary file storage
 ├── requirements.txt       # Python dependencies
 ├── env.example           # Environment variables template
@@ -77,9 +78,12 @@ Proof-Of-Concept-Demo/
 - Flask-CORS
 - python-dotenv
 
-## Notes
+## Technical Details
 
-- Images are automatically deleted after processing
-- Maximum file size: 16MB
-- Supported formats: PNG, JPG, JPEG, GIF, BMP, WEBP
-- The app runs on port 3000 by default
+- **AI Model**: Qwen2.5-VL-72B-Instruct via Together.ai
+- **Security**: Randomized filenames, secure file handling, security headers
+- **File Handling**: Images are automatically deleted after processing
+- **Maximum file size**: 16MB
+- **Supported formats**: PNG, JPG, JPEG, GIF, BMP, WEBP
+- **Port**: Runs on port 3000 by default (configurable via PORT environment variable)
+- **Styling**: Modern dark theme with yellow header and slate background

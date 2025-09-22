@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Turtle Identifier - Results</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <header>
+    <h1>🐢 Turtle Identifier (PoC)</h1>
+    <p>Results from Together.ai</p>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h2>Results</h2>
+      <p class="desc">Here's what the AI thinks about your turtle.</p>
+      <div class="panel">
+        <span class="badge">Together.ai (Qwen2.5-VL Vision)</span>
+        <p><strong>Is Turtle:</strong> {{ "✅ Yes" if result.is_turtle else "❌ No" }}</p>
+        <p><strong>Species:</strong> {{ result.species or "Unknown" }}</p>
+        <p><strong>Common Name:</strong> {{ result.common_name or "Unknown" }}</p>
+        <p><strong>Confidence:</strong>
+          {% set confidence = result.confidence or "Unknown" %}
+          {% if confidence.lower() == "high" %}
+            🟢 High
+          {% elif confidence.lower() == "medium" %}
+            🟡 Medium
+          {% elif confidence.lower() == "low" %}
+            🔴 Low
+          {% else %}
+            {{ confidence }}
+          {% endif %}
+        </p>
+      </div>
+
+      <div class="panel" style="margin-top:1rem">
+        <span class="badge">Preview</span>
+        <img class="preview" src="data:{{ image_mime }};base64,{{ image_data }}" alt="Uploaded image preview">
+      </div>
+
+      <div class="form-row" style="margin-top:1rem">
+        <a href="/"><button>Try another image</button></a>
+      </div>
+    </section>
+  </main>
+  <footer>Simple proof-of-concept • Auto file cleanup • Yellow + Slate theme</footer>
+</body>
+</html>
