@@ -3,6 +3,7 @@ version: '3.8'
 services:
   turtle-identifier:
     build: .
+    platform: linux/amd64
     ports:
       - "3000:3000"
     environment:

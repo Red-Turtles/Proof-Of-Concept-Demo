@@ -9,38 +9,65 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+*.egg-info/
+dist/
+build/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-*
 
 # OS
 .DS_Store
 Thumbs.db
+*.tmp
+*.temp
 
 # Git
 .git/
 .gitignore
+.gitattributes
 
 # Docker
-Dockerfile
+Dockerfile*
 .dockerignore
+docker-compose*.yml
 
 # Logs
 *.log
 logs/
+log/
 
-# Environment
-.env
-.env.local
-.env.production
+# Environment and secrets
+.env*
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials/
 
 # Temporary files
 uploads/*
 !uploads/.gitkeep
+tmp/
+temp/
 
 # Documentation
 README.md
 *.md
+docs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache/
+
+# Security
+*.secret
+*.private

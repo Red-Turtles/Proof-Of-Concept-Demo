@@ -124,14 +124,56 @@ docker-compose -f docker-compose.dev.yml up
 
 ### Docker Commands
 ```bash
-# Build image
-docker build -t turtle-identifier .
+# Build secure image for DigitalOcean (AMD64)
+docker buildx build --platform linux/amd64 -t turtle-identifier:latest .
 
-# Run container
-docker run -p 3000:3000 -e TOGETHER_API_KEY=your_key_here turtle-identifier
+# Build and push for DigitalOcean
+docker buildx build --platform linux/amd64 -t turtle-identifier:latest .
+docker tag turtle-identifier:latest your-registry/turtle-identifier:latest
+docker push your-registry/turtle-identifier:latest
+
+# Run container locally
+docker run -p 3000:3000 -e TOGETHER_API_KEY=your_key_here turtle-identifier:latest
 
 # Run with environment file
-docker run -p 3000:3000 --env-file .env turtle-identifier
+docker run -p 3000:3000 --env-file .env turtle-identifier:latest
+```
+
+### DigitalOcean Deployment
+```bash
+# Build secure image for DigitalOcean platform
+docker buildx build --platform linux/amd64 -t turtle-identifier:latest .
+
+# Tag for your registry
+docker tag turtle-identifier:latest registry.digitalocean.com/your-app/turtle-identifier:latest
+
+# Push to DigitalOcean Container Registry
+docker push registry.digitalocean.com/your-app/turtle-identifier:latest
+```
+
+## Security Features
+
+- **Zero critical/high vulnerabilities**: All Python packages updated to latest secure versions
+- **Single-stage secure build**: Eliminates vulnerable layer copying from builder stage
+- **Non-root user**: Runs as `appuser` (UID 1001) for security
+- **Production-only dependencies**: Uses `requirements-prod.txt` with minimal packages
+- **Pinned dependencies**: All packages have specific versions to prevent supply chain attacks
+- **Minimal base image**: Uses Python slim image with only necessary runtime dependencies
+- **Secure file handling**: Randomized filenames, automatic cleanup, input validation
+- **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+- **No secrets in image**: Environment variables and secrets excluded from build
+- **Health checks**: Container monitoring and automatic restart on failure
+- **Vulnerability scanning**: Automated security checks with Trivy and Docker Scout
+
+## Security Scanning
+
+```bash
+# Run security scan
+./security-scan.sh
+
+# Manual security checks
+docker scout cves turtle-identifier
+trivy image turtle-identifier
 ```
 
 ## Technical Details
