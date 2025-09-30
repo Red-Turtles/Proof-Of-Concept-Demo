@@ -1,0 +1,9 @@
+#! kustomization.yaml
+# Generated code, do not edit
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+    - ../../base
+patches:
+    - path: turtle-identifier-C:\Users\David Amedeka\Proof-Of-Concept-Demo\uploads-persistentVolumeClaim.yaml
+    - path: turtle-identifier-service.yaml

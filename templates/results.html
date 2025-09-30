@@ -3,23 +3,24 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Turtle Identifier - Results</title>
+  <title>Animal Identifier - Results</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
   <header>
-    <h1>🐢 Turtle Identifier (PoC)</h1>
+    <h1>🐾 Animal Identifier (PoC)</h1>
     <p>Results from Together.ai</p>
   </header>
   <main class="container">
     <section class="card">
       <h2>Results</h2>
-      <p class="desc">Here's what the AI thinks about your turtle.</p>
+      <p class="desc">Here's what the AI thinks about your animal.</p>
       <div class="panel">
         <span class="badge">Together.ai (Qwen2.5-VL Vision)</span>
-        <p><strong>Is Turtle:</strong> {{ "✅ Yes" if result.is_turtle else "❌ No" }}</p>
+        <p><strong>Is Animal:</strong> {{ "✅ Yes" if result.is_animal else "❌ No" }}</p>
         <p><strong>Species:</strong> {{ result.species or "Unknown" }}</p>
         <p><strong>Common Name:</strong> {{ result.common_name or "Unknown" }}</p>
+        <p><strong>Animal Type:</strong> {{ result.animal_type or "Unknown" }}</p>
         <p><strong>Confidence:</strong>
           {% set confidence = result.confidence or "Unknown" %}
           {% if confidence.lower() == "high" %}
@@ -41,6 +42,9 @@
 
       <div class="form-row" style="margin-top:1rem">
         <a href="/"><button>Try another image</button></a>
+        {% if result.is_animal and result.species and result.species != "Unknown" %}
+        <a href="/map?species={{ result.species | urlencode }}&common_name={{ result.common_name | urlencode }}&animal_type={{ result.animal_type | urlencode }}"><button>View Habitat Map</button></a>
+        {% endif %}
       </div>
     </section>
   </main>

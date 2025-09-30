@@ -1,0 +1,60 @@
+#! turtle-identifier-deployment.yaml
+# Generated code, do not edit
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: turtle-identifier
+    namespace: proof-of-concept-demo
+    labels:
+        com.docker.compose.project: proof-of-concept-demo
+        com.docker.compose.service: turtle-identifier
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            com.docker.compose.project: proof-of-concept-demo
+            com.docker.compose.service: turtle-identifier
+    strategy:
+        type: Recreate
+    template:
+        metadata:
+            labels:
+                com.docker.compose.project: proof-of-concept-demo
+                com.docker.compose.service: turtle-identifier
+                com.docker.compose.network.default: "true"
+        spec:
+            restartPolicy: unless-stopped
+            containers:
+                - name: turtle-identifier
+                  image: proof-of-concept-demo-turtle-identifier
+                  imagePullPolicy: IfNotPresent
+                  env:
+                    - name: FLASK_DEBUG
+                      value: "False"
+                    - name: FLASK_ENV
+                      value: "production"
+                    - name: MAX_CONTENT_LENGTH
+                      value: "16777216"
+                    - name: PORT
+                      value: "3000"
+                    - name: TOGETHER_API_KEY
+                      value: "tgp_v1_og79mEW5ltkOF5HyFR8cPgH4_McdGoxRZgZ1SfFcQJw"
+                    - name: UPLOAD_FOLDER
+                      value: "uploads"
+                  livenessProbe:
+                    exec:
+                        command: ['curl -f http://localhost:3000/health']
+                    periodSeconds: 30
+                    initialDelaySeconds: 40
+                    timeoutSeconds: 10
+                    failureThreshold: 3
+                  ports:
+                    - name: turtle-ide-3000
+                      containerPort: 3000
+                  volumeMounts:
+                    - name: app-uploads
+                      mountPath: /app/uploads
+            volumes:
+                - name: app-uploads
+                  hostPath:
+                    path: C:\Users\David Amedeka\Proof-Of-Concept-Demo\uploads

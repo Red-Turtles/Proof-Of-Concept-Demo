@@ -1,0 +1,8 @@
+#! 0-proof-of-concept-demo-namespace.yaml
+# Generated code, do not edit
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: proof-of-concept-demo
+    labels:
+        com.docker.compose.project: proof-of-concept-demo

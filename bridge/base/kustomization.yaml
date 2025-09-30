@@ -1,0 +1,11 @@
+#! kustomization.yaml
+# Generated code, do not edit
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+    - 0-proof-of-concept-demo-namespace.yaml
+    - default-network-policy.yaml
+    - turtle-identifier-C:\Users\David Amedeka\Proof-Of-Concept-Demo\uploads-persistentVolumeClaim.yaml
+    - turtle-identifier-deployment.yaml
+    - turtle-identifier-expose.yaml
+    - turtle-identifier-service.yaml

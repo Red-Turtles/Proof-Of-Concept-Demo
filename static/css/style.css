@@ -53,3 +53,148 @@ img.preview{ max-width:100%; border-radius:12px; border:1px solid #334155; margi
 footer{ text-align:center; color:#94a3b8; padding:2rem 0; font-size:.85rem }
 a{ color:#fde047; }
 @media (max-width: 740px){ .result-grid{ grid-template-columns:1fr; } }
+
+/* Map specific styles */
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 80vh;
+  background: linear-gradient(135deg, var(--slate) 0%, var(--slate-2) 100%);
+  border-radius: 18px;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+#globe {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+#globe:active {
+  cursor: grabbing;
+}
+
+.map-controls {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.control-btn {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid #334155;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: var(--yellow);
+  transform: translateY(-1px);
+}
+
+.habitat-info {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 1rem;
+  backdrop-filter: blur(10px);
+  color: white;
+}
+
+.habitat-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.habitat-tag {
+  background: var(--yellow);
+  color: var(--text);
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.habitat-tag:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(255, 216, 77, 0.3);
+}
+
+.loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 1.2rem;
+  z-index: 100;
+}
+
+.species-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.species-name {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--yellow);
+  margin-bottom: 0.5rem;
+}
+
+.species-description {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Mobile responsiveness for map */
+@media (max-width: 768px) {
+  .map-container {
+    height: 60vh;
+  }
+  
+  .map-controls {
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+  
+  .control-btn {
+    padding: 0.4rem;
+    font-size: 0.8rem;
+  }
+  
+  .habitat-info {
+    bottom: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
+    padding: 0.75rem;
+  }
+  
+  .habitat-list {
+    gap: 0.25rem;
+  }
+  
+  .habitat-tag {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+}

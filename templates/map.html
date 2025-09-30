@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Turtle Habitat Map - {{ habitat_data.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    .map-container {
+      position: relative;
+      width: 100%;
+      height: 70vh;
+      border-radius: 18px;
+      overflow: hidden;
+      margin: 1rem 0;
+      border: 1px solid #334155;
+    }
+    
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .map-controls {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .control-btn {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #334155;
+      color: white;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+      min-width: 120px;
+    }
+    
+    .control-btn:hover {
+      background: rgba(15, 23, 42, 1);
+      border-color: var(--yellow);
+      transform: translateY(-1px);
+    }
+    
+    .habitat-info {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      right: 1rem;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1rem;
+      backdrop-filter: blur(10px);
+      color: white;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .habitat-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    
+    .habitat-tag {
+      background: var(--yellow);
+      color: var(--text);
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .habitat-tag:hover {
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(255, 216, 77, 0.3);
+    }
+    
+    .species-header {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    
+    .species-name {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--yellow);
+      margin-bottom: 0.5rem;
+    }
+    
+    .species-description {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    
+    .legend {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.75rem;
+      backdrop-filter: blur(10px);
+      color: white;
+      font-size: 0.8rem;
+      z-index: 1000;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0.25rem 0;
+    }
+    
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    
+    .custom-popup {
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    
+    .popup-title {
+      font-weight: bold;
+      color: var(--slate);
+      margin-bottom: 0.5rem;
+    }
+    
+    .popup-info {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    
+    /* Custom marker styles */
+    .custom-marker {
+      background: var(--yellow);
+      border: 2px solid white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .custom-marker.pulsing {
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.7; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .map-container {
+        height: 60vh;
+      }
+      
+      .map-controls {
+        top: 0.5rem;
+        right: 0.5rem;
+      }
+      
+      .control-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+        min-width: 100px;
+      }
+      
+      .habitat-info {
+        bottom: 0.5rem;
+        left: 0.5rem;
+        right: 0.5rem;
+        padding: 0.75rem;
+        max-height: 150px;
+      }
+      
+      .legend {
+        top: 0.5rem;
+        left: 0.5rem;
+        padding: 0.5rem;
+        font-size: 0.7rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🐾 Animal Habitat Map</h1>
+    <p>Interactive World Map - {{ habitat_data.name }}</p>
+  </header>
+  
+  <main class="container">
+    <section class="card">
+      <div class="species-header">
+        <div class="species-name">{{ habitat_data.name }}</div>
+        <div class="species-description">{{ habitat_data.description }}</div>
+      </div>
+      
+      <div class="map-container">
+        <div id="map"></div>
+        
+        <div class="map-controls">
+          <button class="control-btn" onclick="fitToMarkers()">Show All Locations</button>
+          <button class="control-btn" onclick="toggleMarkers()">Toggle Markers</button>
+          <button class="control-btn" onclick="resetView()">Reset View</button>
+        </div>
+        
+        <div class="legend">
+          <div style="font-weight: bold; margin-bottom: 0.5rem;">Habitat Types</div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ff6b6b;"></div>
+            <span>Tropical</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #4ecdc4;"></div>
+            <span>Temperate</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #45b7d1;"></div>
+            <span>Polar</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #96ceb4;"></div>
+            <span>Subtropical</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #feca57;"></div>
+            <span>Savanna</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #2ecc71;"></div>
+            <span>Forest</span>
+          </div>
+        </div>
+        
+        <div class="habitat-info">
+          <h3>Habitat Locations ({{ habitat_data.habitats|length }} found)</h3>
+          <div class="habitat-list" id="habitatList">
+            {% for habitat in habitat_data.habitats %}
+            <span class="habitat-tag" data-lat="{{ habitat.lat }}" data-lng="{{ habitat.lng }}" 
+                  onclick="flyToLocation({{ habitat.lat }}, {{ habitat.lng }}, '{{ habitat.name }}')">
+              {{ habitat.name }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-row" style="margin-top:1rem">
+        <a href="/"><button>Identify Another Turtle</button></a>
+        <button onclick="downloadMap()">Download Map</button>
+      </div>
+    </section>
+  </main>
+  
+  <footer>Interactive World Map • Powered by Leaflet • Easy navigation and exploration</footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    let map;
+    let markers = [];
+    let markersVisible = true;
+    
+    const habitatData = {{ habitat_data | tojson }};
+    
+    function initMap() {
+      // Initialize the map
+      map = L.map('map', {
+        center: [20, 0],
+        zoom: 2,
+        zoomControl: true,
+        scrollWheelZoom: true,
+        doubleClickZoom: true,
+        boxZoom: true,
+        keyboard: true,
+        dragging: true,
+        touchZoom: true
+      });
+      
+      // Add tile layer (OpenStreetMap)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+      }).addTo(map);
+      
+      // Add habitat markers
+      addHabitatMarkers();
+      
+      // Fit map to show all markers
+      if (markers.length > 0) {
+        const group = new L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+    }
+    
+    function addHabitatMarkers() {
+      habitatData.habitats.forEach((habitat, index) => {
+        const color = getHabitatColor(habitat.type);
+        
+        // Create custom marker icon
+        const markerIcon = L.divIcon({
+          className: 'custom-marker',
+          html: `<div style="background: ${color}; width: 100%; height: 100%; border-radius: 50%; border: 2px solid white;"></div>`,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
+        });
+        
+        // Create marker
+        const marker = L.marker([habitat.lat, habitat.lng], {
+          icon: markerIcon
+        }).addTo(map);
+        
+        // Add popup with habitat information
+        marker.bindPopup(`
+          <div class="custom-popup">
+            <div class="popup-title">${habitat.name}</div>
+            <div class="popup-info">
+              <strong>Type:</strong> ${habitat.type}<br>
+              <strong>Coordinates:</strong> ${habitat.lat.toFixed(2)}°, ${habitat.lng.toFixed(2)}°
+            </div>
+          </div>
+        `);
+        
+        // Add pulsing animation
+        marker.getElement().classList.add('pulsing');
+        
+        markers.push(marker);
+      });
+    }
+    
+    function getHabitatColor(type) {
+      const colors = {
+        'tropical': '#ff6b6b',
+        'temperate': '#4ecdc4',
+        'polar': '#45b7d1',
+        'arctic': '#45b7d1',
+        'subtropical': '#96ceb4',
+        'savanna': '#feca57',
+        'forest': '#2ecc71',
+        'mountain': '#8e44ad',
+        'boreal': '#27ae60',
+        'mediterranean': '#f39c12',
+        'arid': '#e67e22',
+        'unknown': '#ffffff'
+      };
+      return colors[type] || '#ffffff';
+    }
+    
+    function fitToMarkers() {
+      if (markers.length > 0) {
+        const group = new L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+    }
+    
+    function toggleMarkers() {
+      markersVisible = !markersVisible;
+      markers.forEach(marker => {
+        if (markersVisible) {
+          map.addLayer(marker);
+        } else {
+          map.removeLayer(marker);
+        }
+      });
+      
+      document.querySelector('.control-btn:nth-child(2)').textContent = 
+        markersVisible ? 'Hide Markers' : 'Show Markers';
+    }
+    
+    function resetView() {
+      map.setView([20, 0], 2);
+    }
+    
+    function flyToLocation(lat, lng, name) {
+      map.flyTo([lat, lng], 6, {
+        animate: true,
+        duration: 1.5
+      });
+      
+      // Find and open the popup for this marker
+      markers.forEach(marker => {
+        if (marker.getLatLng().lat === lat && marker.getLatLng().lng === lng) {
+          marker.openPopup();
+        }
+      });
+    }
+    
+    function downloadMap() {
+      // Create a canvas element to capture the map
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Get map container dimensions
+      const mapContainer = document.getElementById('map');
+      canvas.width = mapContainer.offsetWidth;
+      canvas.height = mapContainer.offsetHeight;
+      
+      // Fill with background
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Add text overlay
+      ctx.fillStyle = '#333';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Habitat Map: ${habitatData.name}`, canvas.width / 2, 30);
+      
+      // Download the image
+      const link = document.createElement('a');
+      link.download = `turtle-habitat-map-${habitatData.name.replace(/\s+/g, '-').toLowerCase()}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
+    });
+    
+    // Initialize when page loads
+    window.addEventListener('load', initMap);
+  </script>
+</body>
+</html>
+
+

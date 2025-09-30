@@ -199,15 +199,16 @@ def identify_turtle_species_together_ai(image_path):
                     "content": [
                         {
                             "type": "text",
-                            "text": """Please identify the species of turtle in this image. 
-                            Provide the scientific name, common name, and a brief description of key identifying features. 
-                            If this is not a turtle or if you cannot clearly identify the species, please state that clearly.
+                            "text": """Please identify the animal species in this image. 
+                            Provide the scientific name, common name, animal type (mammal, bird, reptile, amphibian, fish, invertebrate), and a brief description of key identifying features. 
+                            If this is not an animal or if you cannot clearly identify the species, please state that clearly.
                             
                             IMPORTANT: Format your response as valid JSON with the following exact structure:
                             {
-                                "is_turtle": true/false,
+                                "is_animal": true/false,
                                 "species": "scientific name or Unknown",
-                                "common_name": "common name or Unknown", 
+                                "common_name": "common name or Unknown",
+                                "animal_type": "mammal/bird/reptile/amphibian/fish/invertebrate/unknown",
                                 "confidence": "high/medium/low",
                                 "description": "key identifying features",
                                 "notes": "any additional notes"
@@ -274,6 +275,182 @@ def identify_turtle_species_together_ai(image_path):
     except Exception as e:
         logger.error(f"Error calling Together.ai API: {str(e)}")
         return {"error": "Service temporarily unavailable"}
+
+def get_animal_habitat_data(species_name, common_name, animal_type):
+    """Get habitat and distribution data for any animal species"""
+    # Comprehensive database of animals and their habitats
+    animal_habitats = {
+        # Mammals
+        "panthera leo": {
+            "name": "African Lion",
+            "habitats": [
+                {"name": "Serengeti, Tanzania", "lat": -2.0, "lng": 34.0, "type": "savanna"},
+                {"name": "Kruger National Park, South Africa", "lat": -24.0, "lng": 31.0, "type": "savanna"},
+                {"name": "Masai Mara, Kenya", "lat": -1.0, "lng": 35.0, "type": "savanna"},
+                {"name": "Gir Forest, India", "lat": 21.0, "lng": 70.0, "type": "forest"}
+            ],
+            "description": "Found in savannas and grasslands of Africa and Asia"
+        },
+        "ursus arctos": {
+            "name": "Brown Bear",
+            "habitats": [
+                {"name": "Alaska, USA", "lat": 64.0, "lng": -150.0, "type": "boreal"},
+                {"name": "Kamchatka, Russia", "lat": 56.0, "lng": 159.0, "type": "boreal"},
+                {"name": "Yellowstone, USA", "lat": 44.0, "lng": -110.0, "type": "temperate"},
+                {"name": "Carpathian Mountains", "lat": 47.0, "lng": 25.0, "type": "temperate"}
+            ],
+            "description": "Widely distributed across North America, Europe, and Asia"
+        },
+        "elephas maximus": {
+            "name": "Asian Elephant",
+            "habitats": [
+                {"name": "Sri Lanka", "lat": 7.0, "lng": 80.0, "type": "tropical"},
+                {"name": "Thailand", "lat": 15.0, "lng": 101.0, "type": "tropical"},
+                {"name": "India", "lat": 20.0, "lng": 77.0, "type": "tropical"},
+                {"name": "Borneo", "lat": 1.0, "lng": 114.0, "type": "tropical"}
+            ],
+            "description": "Found in tropical forests and grasslands of Asia"
+        },
+        "canis lupus": {
+            "name": "Gray Wolf",
+            "habitats": [
+                {"name": "Yellowstone, USA", "lat": 44.0, "lng": -110.0, "type": "temperate"},
+                {"name": "Alaska, USA", "lat": 64.0, "lng": -150.0, "type": "boreal"},
+                {"name": "Siberia, Russia", "lat": 60.0, "lng": 100.0, "type": "boreal"},
+                {"name": "Carpathian Mountains", "lat": 47.0, "lng": 25.0, "type": "temperate"}
+            ],
+            "description": "Found in forests, tundra, and grasslands of North America and Eurasia"
+        },
+        
+        # Birds
+        "aquila chrysaetos": {
+            "name": "Golden Eagle",
+            "habitats": [
+                {"name": "Rocky Mountains, USA", "lat": 40.0, "lng": -105.0, "type": "mountain"},
+                {"name": "Scottish Highlands", "lat": 57.0, "lng": -4.0, "type": "mountain"},
+                {"name": "Himalayas", "lat": 28.0, "lng": 84.0, "type": "mountain"},
+                {"name": "Alps", "lat": 46.0, "lng": 10.0, "type": "mountain"}
+            ],
+            "description": "Found in mountainous regions across the Northern Hemisphere"
+        },
+        "aptenodytes forsteri": {
+            "name": "Emperor Penguin",
+            "habitats": [
+                {"name": "Antarctica", "lat": -75.0, "lng": 0.0, "type": "polar"},
+                {"name": "Ross Sea", "lat": -77.0, "lng": 180.0, "type": "polar"}
+            ],
+            "description": "Endemic to Antarctica, the southernmost breeding bird"
+        },
+        "turdus migratorius": {
+            "name": "American Robin",
+            "habitats": [
+                {"name": "North America", "lat": 45.0, "lng": -100.0, "type": "temperate"},
+                {"name": "Canada", "lat": 60.0, "lng": -100.0, "type": "boreal"},
+                {"name": "Mexico", "lat": 23.0, "lng": -102.0, "type": "subtropical"}
+            ],
+            "description": "Widely distributed across North America"
+        },
+        
+        # Reptiles
+        "chelonia mydas": {
+            "name": "Green Sea Turtle",
+            "habitats": [
+                {"name": "Caribbean Sea", "lat": 15.5, "lng": -80.0, "type": "tropical"},
+                {"name": "Great Barrier Reef", "lat": -18.0, "lng": 147.0, "type": "tropical"},
+                {"name": "Hawaiian Islands", "lat": 21.0, "lng": -157.0, "type": "tropical"},
+                {"name": "Florida Keys", "lat": 24.5, "lng": -81.5, "type": "subtropical"}
+            ],
+            "description": "Found in tropical and subtropical waters worldwide"
+        },
+        "crocodylus niloticus": {
+            "name": "Nile Crocodile",
+            "habitats": [
+                {"name": "Nile River, Egypt", "lat": 26.0, "lng": 31.0, "type": "tropical"},
+                {"name": "Lake Victoria", "lat": -1.0, "lng": 33.0, "type": "tropical"},
+                {"name": "Okavango Delta", "lat": -19.0, "lng": 23.0, "type": "tropical"},
+                {"name": "Madagascar", "lat": -19.0, "lng": 47.0, "type": "tropical"}
+            ],
+            "description": "Found in freshwater habitats across Africa and Madagascar"
+        },
+        
+        # Amphibians
+        "rana catesbeiana": {
+            "name": "American Bullfrog",
+            "habitats": [
+                {"name": "Eastern United States", "lat": 40.0, "lng": -75.0, "type": "temperate"},
+                {"name": "Canada", "lat": 50.0, "lng": -100.0, "type": "temperate"},
+                {"name": "Mexico", "lat": 23.0, "lng": -102.0, "type": "subtropical"}
+            ],
+            "description": "Native to eastern North America, now found worldwide"
+        },
+        
+        # Fish
+        "thunnus thynnus": {
+            "name": "Atlantic Bluefin Tuna",
+            "habitats": [
+                {"name": "North Atlantic", "lat": 45.0, "lng": -40.0, "type": "temperate"},
+                {"name": "Mediterranean Sea", "lat": 35.0, "lng": 20.0, "type": "temperate"},
+                {"name": "Gulf of Mexico", "lat": 28.0, "lng": -90.0, "type": "subtropical"}
+            ],
+            "description": "Found in temperate and subtropical waters of the Atlantic"
+        },
+        "carcharodon carcharias": {
+            "name": "Great White Shark",
+            "habitats": [
+                {"name": "California Coast", "lat": 36.0, "lng": -122.0, "type": "temperate"},
+                {"name": "South Africa", "lat": -34.0, "lng": 18.0, "type": "temperate"},
+                {"name": "Australia", "lat": -33.0, "lng": 151.0, "type": "temperate"},
+                {"name": "Mediterranean Sea", "lat": 35.0, "lng": 20.0, "type": "temperate"}
+            ],
+            "description": "Found in temperate coastal waters worldwide"
+        },
+        
+        # Invertebrates
+        "apis mellifera": {
+            "name": "Western Honey Bee",
+            "habitats": [
+                {"name": "Europe", "lat": 50.0, "lng": 10.0, "type": "temperate"},
+                {"name": "North America", "lat": 40.0, "lng": -100.0, "type": "temperate"},
+                {"name": "Australia", "lat": -25.0, "lng": 133.0, "type": "temperate"},
+                {"name": "South America", "lat": -15.0, "lng": -60.0, "type": "tropical"}
+            ],
+            "description": "Found worldwide, domesticated and wild populations"
+        },
+        "danaus plexippus": {
+            "name": "Monarch Butterfly",
+            "habitats": [
+                {"name": "North America", "lat": 40.0, "lng": -100.0, "type": "temperate"},
+                {"name": "Mexico (winter)", "lat": 19.0, "lng": -99.0, "type": "subtropical"},
+                {"name": "Canada (summer)", "lat": 50.0, "lng": -100.0, "type": "temperate"}
+            ],
+            "description": "Migratory butterfly found across North America"
+        }
+    }
+    
+    # Try to find by scientific name first
+    species_key = species_name.lower().strip() if species_name else ""
+    if species_key in animal_habitats:
+        return animal_habitats[species_key]
+    
+    # Try to find by common name
+    for key, data in animal_habitats.items():
+        if common_name and common_name.lower().strip() in data["name"].lower():
+            return data
+    
+    # Try to find by animal type if no specific match
+    if animal_type:
+        for key, data in animal_habitats.items():
+            if animal_type.lower() in data.get("description", "").lower():
+                return data
+    
+    # Default habitat data for unknown species
+    return {
+        "name": common_name or "Unknown Animal Species",
+        "habitats": [
+            {"name": "Global Distribution", "lat": 0.0, "lng": 0.0, "type": "unknown"}
+        ],
+        "description": f"Habitat information not available for this {animal_type or 'animal'} species"
+    }
 
 # Routes
 @app.route('/')
@@ -361,6 +538,30 @@ def upload_file():
         # Return error page
         return render_template('results.html', 
                              result={'error': 'An error occurred while processing your request'})
+
+@app.route('/map')
+def show_map():
+    """Show interactive map for animal species"""
+    species = request.args.get('species', '')
+    common_name = request.args.get('common_name', '')
+    animal_type = request.args.get('animal_type', '')
+    
+    # Get habitat data for the species
+    habitat_data = get_animal_habitat_data(species, common_name, animal_type)
+    
+    return render_template('map.html', 
+                         species=species,
+                         common_name=common_name,
+                         animal_type=animal_type,
+                         habitat_data=habitat_data)
+
+@app.route('/api/habitat/<species>')
+def get_habitat_api(species):
+    """API endpoint to get habitat data for a species"""
+    common_name = request.args.get('common_name', '')
+    animal_type = request.args.get('animal_type', '')
+    habitat_data = get_animal_habitat_data(species, common_name, animal_type)
+    return jsonify(habitat_data)
 
 @app.route('/health')
 def health_check():

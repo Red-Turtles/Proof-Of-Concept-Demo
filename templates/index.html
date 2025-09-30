@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Turtle Identifier (PoC)</title>
+  <title>Animal Identifier (PoC)</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
   <header>
-    <h1>🐢 Turtle Identifier (PoC)</h1>
-    <p>Upload an image → Get species calls from Together.ai</p>
+    <h1>🐾 Animal Identifier (PoC)</h1>
+    <p>Upload an image → Get species identification from Together.ai</p>
   </header>
   <main class="container">
     <section class="card">
-      <h2>Upload a turtle image</h2>
+      <h2>Upload an animal image</h2>
       <p class="desc">Accepted: PNG, JPG, JPEG, GIF, BMP, WEBP (max 10 MB)</p>
       <form action="/identify" method="post" enctype="multipart/form-data">
         <div class="form-row">
@@ -27,6 +27,6 @@
       </form>
     </section>
   </main>
-  <footer>Simple proof-of-concept • Auto file cleanup • Yellow + Slate theme</footer>
+  <footer>Simple proof-of-concept • Auto file cleanup • Animal identification & habitat mapping</footer>
 </body>
 </html>
