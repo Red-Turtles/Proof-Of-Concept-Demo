@@ -4,11 +4,12 @@ A simple proof-of-concept web app that uses AI to identify turtle species from u
 
 ## Features
 
-- Upload turtle images (PNG, JPG, JPEG, GIF, BMP, WEBP)
-- AI-powered species identification using Together.ai's Qwen2.5-VL Vision model
-- Clean, modern web interface with yellow header theme
-- Automatic file cleanup and security features
-- Real-time image preview with results
+- 🐢 **AI-Powered Identification**: Upload turtle images (PNG, JPG, JPEG, GIF, BMP, WEBP) and get species identification using Together.ai's Qwen2.5-VL Vision model
+- 🔒 **Advanced Security**: CAPTCHA system, rate limiting (2 requests before verification), and browser trust tracking
+- 🌍 **Interactive Habitat Map**: Global distribution visualization of identified species
+- 🎨 **Modern UI**: Clean, responsive web interface with dark theme and yellow header
+- 🔐 **Secure File Handling**: Automatic file cleanup, secure temporary file processing, and randomized filenames
+- 📱 **Responsive Design**: Works seamlessly on desktop and mobile devices
 
 ## Quick Start
 
@@ -134,13 +135,45 @@ docker run -p 3000:3000 -e TOGETHER_API_KEY=your_key_here turtle-identifier
 docker run -p 3000:3000 --env-file .env turtle-identifier
 ```
 
+## Security Features
+
+### CAPTCHA System
+- **Rate Limiting**: After 2 image identifications, users must complete a CAPTCHA challenge
+- **Browser Trust**: Successful CAPTCHA completion marks the browser as trusted for 30 days
+- **Math CAPTCHA**: Simple arithmetic problems for accessibility
+
+### Advanced Security
+- **Browser Fingerprinting**: Unique identification based on browser characteristics
+- **IP-based Rate Limiting**: Prevents abuse from single IP addresses
+- **Session Management**: Secure session handling with configurable timeouts
+- **Security Headers**: Comprehensive security headers for XSS, clickjacking, and content type protection
+
+
 ## Technical Details
 
 - **AI Model**: Qwen2.5-VL-72B-Instruct via Together.ai
-- **Security**: Randomized filenames, secure file handling, non-root user in container
-- **File Handling**: Images are automatically deleted after processing
+- **Security**: CAPTCHA system, rate limiting, browser fingerprinting, secure file handling
+- **File Handling**: Images are automatically deleted after processing with randomized filenames
 - **Maximum file size**: 16MB
 - **Supported formats**: PNG, JPG, JPEG, GIF, BMP, WEBP
 - **Port**: Runs on port 3000 by default (configurable via PORT environment variable)
 - **Styling**: Modern dark theme with yellow header and slate background
 - **Container**: Multi-stage Docker build with health checks
+- **Session Storage**: File-based sessions with secure cookie configuration
+
+## Security Configuration
+
+### Environment Variables
+```env
+# Security Settings
+SECRET_KEY=your-super-secret-key-change-in-production
+RATE_LIMIT_WINDOW=3600  # 1 hour in seconds
+MAX_REQUESTS_PER_WINDOW=2  # Max requests before CAPTCHA
+CAPTCHA_TIMEOUT=300  # 5 minutes
+BROWSER_TRUST_DURATION=2592000  # 30 days in seconds
+```
+
+### Security Endpoints
+- `GET /api/security/status` - Get current security status
+- `POST /api/security/captcha` - Generate CAPTCHA challenge
+- `POST /api/security/verify` - Verify CAPTCHA answer

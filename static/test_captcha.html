@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAPTCHA Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .captcha-test { border: 1px solid #ccc; padding: 20px; margin: 20px 0; }
+        .captcha-container { display: flex; align-items: center; gap: 10px; }
+        .captcha-question { background: #f0f0f0; padding: 10px; border-radius: 5px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>CAPTCHA Test Page</h1>
+    
+    <div class="captcha-test">
+        <h3>Test CAPTCHA Loading</h3>
+        <div class="captcha-container">
+            <div class="captcha-question">
+                <span id="captcha-question">Click "Load CAPTCHA" to test</span>
+            </div>
+            <input type="number" id="captcha-answer" placeholder="Your answer" />
+            <button onclick="testCaptcha()">Load CAPTCHA</button>
+            <button onclick="verifyCaptcha()">Verify</button>
+        </div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let currentCaptcha = null;
+
+        async function testCaptcha() {
+            try {
+                console.log('Testing CAPTCHA API...');
+                const response = await fetch('/api/security/captcha', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    currentCaptcha = await response.json();
+                    console.log('CAPTCHA received:', currentCaptcha);
+                    
+                    document.getElementById('captcha-question').textContent = currentCaptcha.question;
+                    document.getElementById('result').innerHTML = '<p style="color: green;">✅ CAPTCHA loaded successfully!</p>';
+                } else {
+                    console.error('CAPTCHA API failed:', response.status);
+                    document.getElementById('result').innerHTML = '<p style="color: red;">❌ CAPTCHA API failed: ' + response.status + '</p>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = '<p style="color: red;">❌ Error: ' + error.message + '</p>';
+            }
+        }
+
+        async function verifyCaptcha() {
+            if (!currentCaptcha) {
+                document.getElementById('result').innerHTML = '<p style="color: red;">❌ No CAPTCHA loaded</p>';
+                return;
+            }
+
+            const answer = document.getElementById('captcha-answer').value;
+            if (!answer) {
+                document.getElementById('result').innerHTML = '<p style="color: red;">❌ Please enter an answer</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/security/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        captcha_id: currentCaptcha.captcha_id,
+                        answer: answer
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    document.getElementById('result').innerHTML = '<p style="color: green;">✅ CAPTCHA verified successfully!</p>';
+                } else {
+                    document.getElementById('result').innerHTML = '<p style="color: red;">❌ CAPTCHA verification failed: ' + (result.error || 'Unknown error') + '</p>';
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                document.getElementById('result').innerHTML = '<p style="color: red;">❌ Error: ' + error.message + '</p>';
+            }
+        }
+
+        // Auto-load CAPTCHA on page load
+        window.addEventListener('load', testCaptcha);
+    </script>
+</body>
+</html>

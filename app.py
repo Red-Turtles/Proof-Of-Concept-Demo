@@ -11,18 +11,44 @@ import uuid
 import tempfile
 import logging
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session, redirect
 from flask_cors import CORS
+from flask_session import Session
 from PIL import Image
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from security import SecurityManager
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
+
+# Configure secret key for sessions
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+app.config['SESSION_FILE_THRESHOLD'] = 100
+
 CORS(app)
+
+# Initialize session
+Session(app)
+
+# Initialize security manager
+security = SecurityManager(app)
+
+# Security headers
+@app.after_request
+def add_security_headers(response):
+    """Add security headers for enhanced protection"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    return response
 
 # Configure logging
 logging.basicConfig(
@@ -456,13 +482,72 @@ def get_animal_habitat_data(species_name, common_name, animal_type):
 @app.route('/')
 def index():
     """Serve the main page"""
-    return render_template('index.html')
+    security_status = security.get_security_status()
+    
+    # Generate CAPTCHA if rate limited
+    captcha_data = None
+    if security_status.get('rate_limited') and not security_status.get('is_trusted'):
+        captcha_data = security.generate_captcha()
+    
+    return render_template('index.html', 
+                         security_status=security_status,
+                         captcha_data=captcha_data)
+
+@app.route('/verify-captcha', methods=['POST'])
+def verify_captcha():
+    """Handle CAPTCHA verification"""
+    captcha_id = request.form.get('captcha_id')
+    captcha_answer = request.form.get('captcha_answer')
+    
+    if not captcha_id or not captcha_answer:
+        return render_template('index.html', 
+                             security_status=security.get_security_status(),
+                             error_message='Please enter a CAPTCHA answer')
+    
+    if security.verify_captcha(captcha_id, captcha_answer):
+        # CAPTCHA verified successfully, redirect to main page
+        return redirect('/')
+    else:
+        # CAPTCHA failed, generate new one
+        captcha_data = security.generate_captcha()
+        return render_template('index.html', 
+                             security_status=security.get_security_status(),
+                             captcha_data=captcha_data,
+                             error_message='CAPTCHA verification failed. Please try again.')
+
+@app.route('/test-captcha')
+def test_captcha():
+    """Serve CAPTCHA test page"""
+    return app.send_static_file('test_captcha.html')
 
 @app.route('/identify', methods=['POST'])
 def upload_file():
     """Handle file upload and species identification"""
     temp_file_path = None
     try:
+        # Check security requirements
+        requires_captcha = False
+        
+        # Check if browser is trusted
+        if not security.is_browser_trusted():
+            # Check rate limiting
+            if security.check_rate_limit():
+                requires_captcha = True
+                logger.info("Rate limit exceeded, CAPTCHA required")
+        
+        # Check if CAPTCHA is required (should be verified separately now)
+        if requires_captcha:
+            logger.warning("CAPTCHA required but not verified")
+            # Return to the main page with CAPTCHA required message
+            captcha_data = security.generate_captcha()
+            return render_template('index.html', 
+                                 security_status=security.get_security_status(),
+                                 captcha_data=captcha_data,
+                                 error_message='Security verification required. Please solve the CAPTCHA below.')
+        
+        # Record the request for rate limiting
+        security.record_request()
+        
         # Check if file is present
         if 'file' not in request.files:
             logger.warning("Upload attempt without file")
@@ -562,6 +647,32 @@ def get_habitat_api(species):
     animal_type = request.args.get('animal_type', '')
     habitat_data = get_animal_habitat_data(species, common_name, animal_type)
     return jsonify(habitat_data)
+
+@app.route('/api/security/status')
+def security_status():
+    """Get current security status"""
+    return jsonify(security.get_security_status())
+
+@app.route('/api/security/captcha', methods=['POST'])
+def generate_captcha_endpoint():
+    """Generate a new CAPTCHA challenge"""
+    captcha_data = security.generate_captcha()
+    return jsonify(captcha_data)
+
+@app.route('/api/security/verify', methods=['POST'])
+def verify_captcha_endpoint():
+    """Verify CAPTCHA answer"""
+    data = request.get_json()
+    captcha_id = data.get('captcha_id')
+    answer = data.get('answer')
+    
+    if not captcha_id or not answer:
+        return jsonify({'success': False, 'error': 'Missing captcha_id or answer'}), 400
+    
+    if security.verify_captcha(captcha_id, answer):
+        return jsonify({'success': True, 'message': 'CAPTCHA verified successfully'})
+    else:
+        return jsonify({'success': False, 'error': 'CAPTCHA verification failed'}), 400
 
 @app.route('/health')
 def health_check():
