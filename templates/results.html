@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Animal Identifier - Results</title>
+  <title>Animal Species Identifier - Results</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
@@ -41,13 +41,13 @@
       </div>
 
       <div class="form-row" style="margin-top:1rem">
-        <a href="/"><button>Try another image</button></a>
+        <a href="/"><button>Identify another animal</button></a>
         {% if result.is_animal and result.species and result.species != "Unknown" %}
         <a href="/map?species={{ result.species | urlencode }}&common_name={{ result.common_name | urlencode }}&animal_type={{ result.animal_type | urlencode }}"><button>View Habitat Map</button></a>
         {% endif %}
       </div>
     </section>
   </main>
-  <footer>Simple proof-of-concept • Auto file cleanup • Yellow + Slate theme</footer>
+  <footer>Animal Species Identification • Auto file cleanup • Secure file handling</footer>
 </body>
 </html>

@@ -1,10 +1,10 @@
-# 🐢 Turtle Species Identification App
+# 🐾 Animal Species Identification App
 
-A simple proof-of-concept web app that uses AI to identify turtle species from uploaded images.
+A simple proof-of-concept web app that uses AI to identify animal species from uploaded images.
 
 ## Features
 
-- 🐢 **AI-Powered Identification**: Upload turtle images (PNG, JPG, JPEG, GIF, BMP, WEBP) and get species identification using Together.ai's Qwen2.5-VL Vision model
+- 🐾 **AI-Powered Identification**: Upload animal images (PNG, JPG, JPEG, GIF, BMP, WEBP) and get species identification using Together.ai's Qwen2.5-VL Vision model
 - 🔒 **Advanced Security**: CAPTCHA system, rate limiting (2 requests before verification), and browser trust tracking
 - 🌍 **Interactive Habitat Map**: Global distribution visualization of identified species
 - 🎨 **Modern UI**: Clean, responsive web interface with dark theme and yellow header
@@ -67,10 +67,10 @@ Get your key from:
 
 ## Usage
 
-1. Upload an image of a turtle
+1. Upload an image of any animal
 2. Click "Identify" to analyze with Together.ai
 3. View the AI's analysis including:
-   - Is Turtle (Yes/No)
+   - Is Animal (Yes/No)
    - Scientific name
    - Common name
    - Confidence level (High/Medium/Low with visual indicators)
@@ -81,15 +81,19 @@ Get your key from:
 ```
 Proof-Of-Concept-Demo/
 ├── app.py                 # Main Flask application
+├── security.py            # Security and CAPTCHA system
 ├── templates/
 │   ├── index.html         # Main upload interface
-│   └── results.html       # Results display page
+│   ├── results.html       # Results display page
+│   └── map.html          # Interactive habitat map
 ├── static/
-│   └── css/
-│       └── style.css      # Styling (yellow header theme)
+│   ├── css/
+│   │   └── style.css      # Styling (dark theme with yellow accents)
+│   └── test_captcha.html  # CAPTCHA testing page
 ├── uploads/               # Temporary file storage
 ├── requirements.txt       # Python dependencies
 ├── env.example           # Environment variables template
+├── test_security.py      # Security feature testing
 ├── .env                  # Your API keys (create this)
 └── README.md             # This file
 ```
@@ -126,13 +130,13 @@ docker-compose -f docker-compose.dev.yml up
 ### Docker Commands
 ```bash
 # Build image
-docker build -t turtle-identifier .
+docker build -t animal-identifier .
 
 # Run container
-docker run -p 3000:3000 -e TOGETHER_API_KEY=your_key_here turtle-identifier
+docker run -p 3000:3000 -e TOGETHER_API_KEY=your_key_here animal-identifier
 
 # Run with environment file
-docker run -p 3000:3000 --env-file .env turtle-identifier
+docker run -p 3000:3000 --env-file .env animal-identifier
 ```
 
 ## Security Features

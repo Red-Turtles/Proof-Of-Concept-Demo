@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Turtle Habitat Map - {{ habitat_data.name }}</title>
+  <title>Animal Habitat Map - {{ habitat_data.name }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -266,7 +266,7 @@
       </div>
       
       <div class="form-row" style="margin-top:1rem">
-        <a href="/"><button>Identify Another Turtle</button></a>
+        <a href="/"><button>Identify Another Animal</button></a>
         <button onclick="downloadMap()">Download Map</button>
       </div>
     </section>
