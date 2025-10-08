@@ -14,7 +14,8 @@ from datetime import datetime
 from flask import Flask, request, jsonify, render_template, session, redirect
 from flask_cors import CORS
 from flask_session import Session
-from PIL import Image
+from PIL import Image, ImageFile
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from security import SecurityManager
@@ -31,7 +32,14 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
 app.config['SESSION_FILE_THRESHOLD'] = 100
 
-CORS(app)
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
+ 
+# Configure CORS narrowly: only enable for API routes and allowed origins
+cors_origins_env = os.getenv('CORS_ORIGINS', '').strip()
+if cors_origins_env:
+    allowed_origins = [o.strip() for o in cors_origins_env.split(',') if o.strip()]
+    CORS(app, resources={r"/api/*": {"origins": allowed_origins}}, supports_credentials=True)
 
 # Initialize session
 Session(app)
@@ -65,11 +73,27 @@ logger = logging.getLogger(__name__)
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16777216))  # 16MB
 
+# Secure session cookie settings (use env or safe defaults)
+def _env_bool(name, default):
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in ('1', 'true', 'yes', 'on')
+
+is_production = os.getenv('FLASK_ENV', 'production').lower() == 'production'
+app.config['SESSION_COOKIE_SECURE'] = _env_bool('SESSION_COOKIE_SECURE', True if is_production else False)
+app.config['SESSION_COOKIE_HTTPONLY'] = _env_bool('SESSION_COOKIE_HTTPONLY', True)
+app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
 
 # Create upload directory if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Pillow safety: prevent decompression bombs
+ImageFile.LOAD_TRUNCATED_IMAGES = False
+Image.MAX_IMAGE_PIXELS = int(os.getenv('MAX_IMAGE_PIXELS', '50000000'))
 
 # Utility Functions
 def allowed_file(filename):
@@ -641,6 +665,7 @@ def show_map():
                          habitat_data=habitat_data)
 
 @app.route('/api/habitat/<species>')
+@csrf.exempt
 def get_habitat_api(species):
     """API endpoint to get habitat data for a species"""
     common_name = request.args.get('common_name', '')
@@ -649,17 +674,20 @@ def get_habitat_api(species):
     return jsonify(habitat_data)
 
 @app.route('/api/security/status')
+@csrf.exempt
 def security_status():
     """Get current security status"""
     return jsonify(security.get_security_status())
 
 @app.route('/api/security/captcha', methods=['POST'])
+@csrf.exempt
 def generate_captcha_endpoint():
     """Generate a new CAPTCHA challenge"""
     captcha_data = security.generate_captcha()
     return jsonify(captcha_data)
 
 @app.route('/api/security/verify', methods=['POST'])
+@csrf.exempt
 def verify_captcha_endpoint():
     """Verify CAPTCHA answer"""
     data = request.get_json()
@@ -675,6 +703,7 @@ def verify_captcha_endpoint():
         return jsonify({'success': False, 'error': 'CAPTCHA verification failed'}), 400
 
 @app.route('/health')
+@csrf.exempt
 def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'message': 'Turtle ID API is running'})
@@ -688,4 +717,5 @@ if __name__ == '__main__':
     print("   Press Ctrl+C to stop the server")
     print()
     
-    app.run(debug=True, host='0.0.0.0', port=port)
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').strip().lower() == 'true'
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)

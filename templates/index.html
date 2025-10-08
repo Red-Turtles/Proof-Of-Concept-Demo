@@ -33,6 +33,7 @@
         <div class="security-message error">{{ error_message }}</div>
         {% endif %}
         <form id="captcha-form" action="/verify-captcha" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           <div class="captcha-container">
             <div class="captcha-question">
               {{ captcha_data.question }} = ?
@@ -48,6 +49,7 @@
       {% endif %}
       
       <form id="upload-form" action="/identify" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <div class="form-row">
           <input type="file" name="file" accept=".png,.jpg,.jpeg,.gif,.bmp,.webp" required />
           <button type="submit" id="submit-btn">Identify</button>
