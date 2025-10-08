@@ -12,6 +12,8 @@ services:
       - TOGETHER_API_KEY=${TOGETHER_API_KEY}
       - UPLOAD_FOLDER=uploads
       - MAX_CONTENT_LENGTH=16777216
+      - SESSION_COOKIE_SECURE=true
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped
