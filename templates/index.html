@@ -47,7 +47,7 @@
       </div>
       {% endif %}
       
-      <form id="upload-form" action="/identify" method="post" enctype="multipart/form-data">
+      <form id="upload-form" action="/identify" method="post" enctype="multipart/form-data" {% if recaptcha_site_key %}data-sitekey="{{ recaptcha_site_key }}"{% endif %}>
         <div class="form-row">
           <input type="file" name="file" accept=".png,.jpg,.jpeg,.gif,.bmp,.webp" required />
           <button type="submit" id="submit-btn">Identify</button>
@@ -60,5 +60,9 @@
     </section>
   </main>
   <footer>Animal Species Identification • Auto file cleanup • Interactive habitat mapping</footer>
+  {% if recaptcha_site_key %}
+  <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}" async defer></script>
+  {% endif %}
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 </body>
 </html>

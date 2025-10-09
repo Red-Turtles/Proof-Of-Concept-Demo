@@ -9,6 +9,8 @@ import json
 import time
 import random
 import string
+import os
+import requests
 from datetime import datetime, timedelta
 from flask import request, session, jsonify
 import logging
@@ -18,10 +20,10 @@ logger = logging.getLogger(__name__)
 class SecurityManager:
     def __init__(self, app=None):
         self.app = app
-        self.rate_limit_window = 3600  # 1 hour
-        self.max_requests_per_window = 2  # Max requests before CAPTCHA
-        self.captcha_timeout = 300  # 5 minutes
-        self.browser_trust_duration = 86400 * 30  # 30 days
+        self.rate_limit_window = int(os.getenv('RATE_LIMIT_WINDOW', 3600))  # 1 hour
+        self.max_requests_per_window = int(os.getenv('MAX_REQUESTS_PER_WINDOW', 2))  # Max requests before CAPTCHA
+        self.captcha_timeout = int(os.getenv('CAPTCHA_TIMEOUT', 300))  # 5 minutes
+        self.browser_trust_duration = int(os.getenv('BROWSER_TRUST_DURATION', 86400 * 30))  # 30 days
         
         # In-memory storage for demo (use Redis in production)
         self.request_counts = {}
@@ -240,3 +242,28 @@ class SecurityManager:
             'browser_fingerprint': session.get('browser_fingerprint', ''),
             'request_count': len(self.request_counts.get(self._get_rate_limit_key(), []))
         }
+
+    # --- reCAPTCHA helpers ---
+    def is_recaptcha_configured(self):
+        site_key = os.getenv('RECAPTCHA_SITE_KEY', '').strip()
+        secret_key = os.getenv('RECAPTCHA_SECRET_KEY', '').strip()
+        return bool(site_key and secret_key)
+
+    def verify_recaptcha(self, token, remote_ip=None):
+        """Verify a reCAPTCHA token with Google's siteverify API"""
+        secret_key = os.getenv('RECAPTCHA_SECRET_KEY', '').strip()
+        if not secret_key or not token:
+            return False
+        try:
+            data = {
+                'secret': secret_key,
+                'response': token
+            }
+            if remote_ip:
+                data['remoteip'] = remote_ip
+            response = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data, timeout=5)
+            result = response.json()
+            return bool(result.get('success'))
+        except Exception as e:
+            logger.warning(f"reCAPTCHA verification error: {str(e)}")
+            return False
