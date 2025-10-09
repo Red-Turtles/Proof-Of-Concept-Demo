@@ -47,7 +47,7 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org;"
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org; frame-src 'self' https://www.google.com;"
     return response
 
 # Configure logging
@@ -483,26 +483,32 @@ def get_animal_habitat_data(species_name, common_name, animal_type):
 def index():
     """Serve the main page"""
     security_status = security.get_security_status()
+    recaptcha_site_key = os.getenv('RECAPTCHA_SITE_KEY', '').strip() or None
     
     # Generate CAPTCHA if rate limited
     captcha_data = None
     if security_status.get('rate_limited') and not security_status.get('is_trusted'):
-        captcha_data = security.generate_captcha()
+        # Only generate math CAPTCHA if reCAPTCHA is not configured
+        if not recaptcha_site_key:
+            captcha_data = security.generate_captcha()
     
     return render_template('index.html', 
                          security_status=security_status,
-                         captcha_data=captcha_data)
+                         captcha_data=captcha_data,
+                         recaptcha_site_key=recaptcha_site_key)
 
 @app.route('/verify-captcha', methods=['POST'])
 def verify_captcha():
     """Handle CAPTCHA verification"""
     captcha_id = request.form.get('captcha_id')
     captcha_answer = request.form.get('captcha_answer')
+    recaptcha_site_key = os.getenv('RECAPTCHA_SITE_KEY', '').strip() or None
     
     if not captcha_id or not captcha_answer:
         return render_template('index.html', 
                              security_status=security.get_security_status(),
-                             error_message='Please enter a CAPTCHA answer')
+                             error_message='Please enter a CAPTCHA answer',
+                             recaptcha_site_key=recaptcha_site_key)
     
     if security.verify_captcha(captcha_id, captcha_answer):
         # CAPTCHA verified successfully, redirect to main page
@@ -513,7 +519,8 @@ def verify_captcha():
         return render_template('index.html', 
                              security_status=security.get_security_status(),
                              captcha_data=captcha_data,
-                             error_message='CAPTCHA verification failed. Please try again.')
+                             error_message='CAPTCHA verification failed. Please try again.',
+                             recaptcha_site_key=recaptcha_site_key)
 
 @app.route('/test-captcha')
 def test_captcha():
@@ -527,6 +534,8 @@ def upload_file():
     try:
         # Check security requirements
         requires_captcha = False
+        recaptcha_site_key = os.getenv('RECAPTCHA_SITE_KEY', '').strip() or None
+        recaptcha_secret = os.getenv('RECAPTCHA_SECRET_KEY', '').strip() or None
         
         # Check if browser is trusted
         if not security.is_browser_trusted():
@@ -537,13 +546,27 @@ def upload_file():
         
         # Check if CAPTCHA is required (should be verified separately now)
         if requires_captcha:
-            logger.warning("CAPTCHA required but not verified")
-            # Return to the main page with CAPTCHA required message
-            captcha_data = security.generate_captcha()
-            return render_template('index.html', 
-                                 security_status=security.get_security_status(),
-                                 captcha_data=captcha_data,
-                                 error_message='Security verification required. Please solve the CAPTCHA below.')
+            # If reCAPTCHA is configured, expect and verify a token
+            if recaptcha_site_key and recaptcha_secret:
+                token = request.form.get('recaptcha_token', '')
+                client_ip = security._get_client_ip()
+                if not token or not security.verify_recaptcha(token, client_ip):
+                    logger.warning("reCAPTCHA required but not verified or failed")
+                    return render_template('index.html', 
+                                         security_status=security.get_security_status(),
+                                         recaptcha_site_key=recaptcha_site_key,
+                                         error_message='Security verification required. Please try again.')
+                else:
+                    # On success, trust browser for a period
+                    security.trust_browser()
+            else:
+                logger.warning("CAPTCHA required but not verified")
+                # Return to the main page with CAPTCHA required message (math CAPTCHA fallback)
+                captcha_data = security.generate_captcha()
+                return render_template('index.html', 
+                                     security_status=security.get_security_status(),
+                                     captcha_data=captcha_data,
+                                     error_message='Security verification required. Please solve the CAPTCHA below.')
         
         # Record the request for rate limiting
         security.record_request()
