@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Animal Discovery - WildID</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <!-- Header Navigation -->
+  <nav class="header-nav">
+    <div class="nav-container">
+      <div class="logo">
+        <span class="logo-icon">🍃</span>
+        <span class="logo-text">WildID</span>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/discovery" class="nav-link active">Discovery</a>
+        <a href="/identify" class="nav-link">Tell Us What You Saw</a>
+        <a href="/contact" class="nav-link">Contact</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="discovery-main">
+    <div class="container">
+      <!-- Page Header -->
+      <div class="page-header">
+        <h1 class="page-title">Animal Discovery</h1>
+        <p class="page-description">
+          Upload a photo of any animal and our AI will identify it, providing detailed information about the species, conservation status, and habitat.
+        </p>
+        <p class="demo-mode">Demo mode: Using simulated AI with color pattern recognition.</p>
+      </div>
+
+      <!-- Upload Section -->
+      <section class="discovery-card">
+        <h2>Upload Animal Photo</h2>
+        
+        <!-- Security Status -->
+        <div id="security-status" class="security-status" style="display: none;">
+          <div class="security-info">
+            <span class="security-icon">🔒</span>
+            <span id="security-message">Security verification required</span>
+          </div>
+        </div>
+        
+        <!-- CAPTCHA Section -->
+        {% if captcha_data %}
+        <div id="captcha-section" class="captcha-section" style="display: block;">
+          <h3>Security Verification</h3>
+          <p class="captcha-desc">Please solve the math problem to continue:</p>
+          {% if error_message %}
+          <div class="security-message error">{{ error_message }}</div>
+          {% endif %}
+          <form id="captcha-form" action="/verify-captcha" method="post">
+            <div class="captcha-container">
+              <div class="captcha-question">
+                {{ captcha_data.question }} = ?
+              </div>
+              <input type="hidden" name="captcha_id" value="{{ captcha_data.captcha_id }}" />
+              <input type="number" name="captcha_answer" placeholder="Your answer" required />
+              <button type="submit" class="captcha-submit-btn">Verify</button>
+              <a href="/discovery" class="refresh-btn">🔄</a>
+            </div>
+          </form>
+          <p class="captcha-note">After 2 image identifications, additional verification may be required.</p>
+        </div>
+        {% endif %}
+        
+        <form id="upload-form" action="/identify" method="post" enctype="multipart/form-data">
+          <div class="discovery-upload-area">
+            <div class="upload-content">
+              <div class="upload-icon">⬆</div>
+              <div class="upload-text">
+                <span class="upload-title">Click to upload or drag and drop</span>
+              </div>
+              <div class="upload-subtitle">
+                <span class="file-types">PNG, JPG, or WEBP (MAX. 16MB)</span>
+              </div>
+              <input type="file" name="file" accept=".png,.jpg,.jpeg,.gif,.bmp,.webp" required id="file-input" />
+            </div>
+            <div class="file-info" id="file-info" style="display: none;">
+              <span class="file-name" id="file-name"></span>
+              <button type="button" class="remove-file" id="remove-file">✕</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <button type="submit" id="submit-btn" disabled>Identify Animal</button>
+          </div>
+          <div class="form-row">
+            <p class="small">Powered by Together.ai - Qwen2.5-VL Vision Model</p>
+          </div>
+          <p class="small">Your file is removed right after analysis.</p>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <p>WildID • Wildlife Identification • Auto file cleanup • Interactive habitat mapping</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

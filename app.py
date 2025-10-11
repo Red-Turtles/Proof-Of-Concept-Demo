@@ -1,6 +1,6 @@
 """
-Turtle Species Identification App
-A simple Flask app that uses AI to identify turtle species from uploaded images.
+WildID - Wildlife Identification App
+A modern Flask app that uses AI to identify wildlife species from uploaded images.
 """
 
 import os
@@ -493,6 +493,20 @@ def index():
                          security_status=security_status,
                          captcha_data=captcha_data)
 
+@app.route('/discovery')
+def discovery():
+    """Serve the discovery page"""
+    security_status = security.get_security_status()
+    
+    # Generate CAPTCHA if rate limited
+    captcha_data = None
+    if security_status.get('rate_limited') and not security_status.get('is_trusted'):
+        captcha_data = security.generate_captcha()
+    
+    return render_template('discovery.html', 
+                         security_status=security_status,
+                         captcha_data=captcha_data)
+
 @app.route('/verify-captcha', methods=['POST'])
 def verify_captcha():
     """Handle CAPTCHA verification"""
@@ -648,6 +662,33 @@ def get_habitat_api(species):
     habitat_data = get_animal_habitat_data(species, common_name, animal_type)
     return jsonify(habitat_data)
 
+@app.route('/test-coordinates')
+def test_coordinates():
+    """Test endpoint to check coordinate data"""
+    habitat_data = get_animal_habitat_data("panthera leo", "African Lion", "mammal")
+    
+    # Show raw data
+    print("=== RAW HABITAT DATA ===")
+    print(f"Type: {type(habitat_data)}")
+    print(f"Data: {habitat_data}")
+    
+    if 'habitats' in habitat_data:
+        for i, habitat in enumerate(habitat_data['habitats']):
+            print(f"Habitat {i+1}:")
+            print(f"  Name: {habitat['name']}")
+            print(f"  Lat: {habitat['lat']} (type: {type(habitat['lat'])})")
+            print(f"  Lng: {habitat['lng']} (type: {type(habitat['lng'])})")
+    
+    return jsonify({
+        "raw_data": habitat_data,
+        "analysis": "Check console for detailed output"
+    })
+
+@app.route('/test-map')
+def test_map():
+    """Test map page for debugging coordinates"""
+    return render_template('test-map.html')
+
 @app.route('/api/security/status')
 def security_status():
     """Get current security status"""
@@ -677,13 +718,13 @@ def verify_captcha_endpoint():
 @app.route('/health')
 def health_check():
     """Health check endpoint"""
-    return jsonify({'status': 'healthy', 'message': 'Turtle ID API is running'})
+    return jsonify({'status': 'healthy', 'message': 'WildID API is running'})
 
 if __name__ == '__main__':
     # Get port from environment or default to 3000
     port = int(os.getenv('PORT', 3000))
     
-    print("🐢 Starting Turtle Species Identification App...")
+    print("🦜 Starting WildID - Wildlife Identification App...")
     print(f"   Open your browser to: http://localhost:{port}")
     print("   Press Ctrl+C to stop the server")
     print()

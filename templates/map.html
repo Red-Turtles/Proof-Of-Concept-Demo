@@ -6,273 +6,113 @@
   <title>Animal Habitat Map - {{ habitat_data.name }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    .map-container {
-      position: relative;
-      width: 100%;
-      height: 70vh;
-      border-radius: 18px;
-      overflow: hidden;
-      margin: 1rem 0;
-      border: 1px solid #334155;
-    }
-    
-    #map {
-      width: 100%;
-      height: 100%;
-    }
-    
-    .map-controls {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    
-    .control-btn {
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid #334155;
-      color: white;
-      padding: 0.5rem 0.75rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      backdrop-filter: blur(10px);
-      transition: all 0.2s ease;
-      min-width: 120px;
-    }
-    
-    .control-btn:hover {
-      background: rgba(15, 23, 42, 1);
-      border-color: var(--yellow);
-      transform: translateY(-1px);
-    }
-    
-    .habitat-info {
-      position: absolute;
-      bottom: 1rem;
-      left: 1rem;
-      right: 1rem;
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 1rem;
-      backdrop-filter: blur(10px);
-      color: white;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    
-    .habitat-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-    
-    .habitat-tag {
-      background: var(--yellow);
-      color: var(--text);
-      padding: 0.25rem 0.5rem;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .habitat-tag:hover {
-      transform: scale(1.05);
-      box-shadow: 0 2px 8px rgba(255, 216, 77, 0.3);
-    }
-    
-    .species-header {
-      text-align: center;
-      margin-bottom: 1rem;
-    }
-    
-    .species-name {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: var(--yellow);
-      margin-bottom: 0.5rem;
-    }
-    
-    .species-description {
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-    
-    .legend {
-      position: absolute;
-      top: 1rem;
-      left: 1rem;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 0.75rem;
-      backdrop-filter: blur(10px);
-      color: white;
-      font-size: 0.8rem;
-      z-index: 1000;
-    }
-    
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin: 0.25rem 0;
-    }
-    
-    .legend-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-    
-    .custom-popup {
-      font-family: system-ui, -apple-system, sans-serif;
-    }
-    
-    .popup-title {
-      font-weight: bold;
-      color: var(--slate);
-      margin-bottom: 0.5rem;
-    }
-    
-    .popup-info {
-      font-size: 0.9rem;
-      color: #666;
-    }
-    
-    /* Custom marker styles */
-    .custom-marker {
-      background: var(--yellow);
-      border: 2px solid white;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    .custom-marker.pulsing {
-      animation: pulse 2s infinite;
-    }
-    
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.2); opacity: 0.7; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    
-    /* Mobile responsiveness */
-    @media (max-width: 768px) {
-      .map-container {
-        height: 60vh;
-      }
-      
-      .map-controls {
-        top: 0.5rem;
-        right: 0.5rem;
-      }
-      
-      .control-btn {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.8rem;
-        min-width: 100px;
-      }
-      
-      .habitat-info {
-        bottom: 0.5rem;
-        left: 0.5rem;
-        right: 0.5rem;
-        padding: 0.75rem;
-        max-height: 150px;
-      }
-      
-      .legend {
-        top: 0.5rem;
-        left: 0.5rem;
-        padding: 0.5rem;
-        font-size: 0.7rem;
-      }
-    }
-  </style>
 </head>
 <body>
   <header>
-    <h1>🐾 Animal Habitat Map</h1>
-    <p>Interactive World Map - {{ habitat_data.name }}</p>
+    <h1>🐾 Animal Identifier</h1>
+    <p>Interactive habitat mapping powered by AI</p>
   </header>
   
   <main class="container">
-    <section class="card">
-      <div class="species-header">
-        <div class="species-name">{{ habitat_data.name }}</div>
-        <div class="species-description">{{ habitat_data.description }}</div>
+    
+    <!-- Species Hero Section -->
+    <section class="species-hero">
+      <div class="hero-content">
+        <div class="hero-icon">🗺️</div>
+        <div class="hero-text">
+          <h2 class="hero-title">{{ habitat_data.name }}</h2>
+          <p class="hero-subtitle">{{ habitat_data.description }}</p>
+        </div>
+      </div>
+      
+      <div class="stats-indicator">
+        <div class="stats-badge">
+          <span class="stats-icon">📍</span>
+          <span class="stats-text">{{ habitat_data.habitats|length }} Habitat Locations</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Map Section -->
+    <section class="map-section">
+      <div class="map-header">
+        <div class="map-title">
+          <h3>🌍 Global Habitat Distribution</h3>
+          <p>Explore the natural habitats where this species can be found</p>
+        </div>
       </div>
       
       <div class="map-container">
         <div id="map"></div>
         
+        <!-- Map Controls - Inside map -->
         <div class="map-controls">
-          <button class="control-btn" onclick="fitToMarkers()">Show All Locations</button>
-          <button class="control-btn" onclick="toggleMarkers()">Toggle Markers</button>
-          <button class="control-btn" onclick="resetView()">Reset View</button>
+          <button class="control-btn primary" onclick="fitToMarkers()">
+            <span class="btn-icon">🎯</span>
+            <span class="btn-text">Show All</span>
+          </button>
+          <button class="control-btn secondary" onclick="toggleMarkers()">
+            <span class="btn-icon">👁️</span>
+            <span class="btn-text">Toggle</span>
+          </button>
+          <button class="control-btn tertiary" onclick="resetView()">
+            <span class="btn-icon">🔄</span>
+            <span class="btn-text">Reset</span>
+          </button>
         </div>
         
-        <div class="legend">
-          <div style="font-weight: bold; margin-bottom: 0.5rem;">Habitat Types</div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #ff6b6b;"></div>
-            <span>Tropical</span>
+        <!-- Map Legend - Better positioned -->
+        <div class="map-legend">
+          <div class="legend-header">
+            <span class="legend-icon">🎨</span>
+            <span class="legend-title">Habitat Types</span>
           </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #4ecdc4;"></div>
-            <span>Temperate</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #45b7d1;"></div>
-            <span>Polar</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #96ceb4;"></div>
-            <span>Subtropical</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #feca57;"></div>
-            <span>Savanna</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #2ecc71;"></div>
-            <span>Forest</span>
-          </div>
-        </div>
-        
-        <div class="habitat-info">
-          <h3>Habitat Locations ({{ habitat_data.habitats|length }} found)</h3>
-          <div class="habitat-list" id="habitatList">
-            {% for habitat in habitat_data.habitats %}
-            <span class="habitat-tag" data-lat="{{ habitat.lat }}" data-lng="{{ habitat.lng }}" 
-                  onclick="flyToLocation({{ habitat.lat }}, {{ habitat.lng }}, '{{ habitat.name }}')">
-              {{ habitat.name }}
-            </span>
-            {% endfor %}
+          <div class="legend-items">
+            <div class="legend-item">
+              <div class="legend-color tropical"></div>
+              <span class="legend-label">Tropical</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color temperate"></div>
+              <span class="legend-label">Temperate</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color polar"></div>
+              <span class="legend-label">Polar</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color subtropical"></div>
+              <span class="legend-label">Subtropical</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color savanna"></div>
+              <span class="legend-label">Savanna</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color forest"></div>
+              <span class="legend-label">Forest</span>
+            </div>
           </div>
         </div>
       </div>
       
-      <div class="form-row" style="margin-top:1rem">
-        <a href="/"><button>Identify Another Animal</button></a>
-        <button onclick="downloadMap()">Download Map</button>
-      </div>
     </section>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <a href="/" class="action-btn primary">
+        <span class="btn-icon">🔍</span>
+        <span class="btn-text">Identify Another Animal</span>
+      </a>
+      <button class="action-btn secondary" onclick="downloadMap()">
+        <span class="btn-icon">📥</span>
+        <span class="btn-text">Download Map</span>
+      </button>
+    </div>
+
   </main>
   
-  <footer>Interactive World Map • Powered by Leaflet • Easy navigation and exploration</footer>
+  <footer>Interactive Habitat Mapping • Powered by Leaflet • AI-driven species analysis</footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -281,6 +121,48 @@
     let markersVisible = true;
     
     const habitatData = {{ habitat_data | tojson }};
+    
+    // Debug: Check if coordinates are being converted to strings
+    console.log('=== HABITAT DATA ANALYSIS ===');
+    console.log('Full habitat data:', habitatData);
+    if (habitatData.habitats && habitatData.habitats.length > 0) {
+      const firstHabitat = habitatData.habitats[0];
+      console.log('First habitat lat type:', typeof firstHabitat.lat, 'value:', firstHabitat.lat);
+      console.log('First habitat lng type:', typeof firstHabitat.lng, 'value:', firstHabitat.lng);
+      console.log('Is lat a string?', typeof firstHabitat.lat === 'string');
+      console.log('Is lng a string?', typeof firstHabitat.lng === 'string');
+    }
+    
+    // FIX: Ensure all coordinates are numbers, not strings
+    if (habitatData.habitats) {
+      habitatData.habitats.forEach(habitat => {
+        if (typeof habitat.lat === 'string') {
+          habitat.lat = parseFloat(habitat.lat);
+        }
+        if (typeof habitat.lng === 'string') {
+          habitat.lng = parseFloat(habitat.lng);
+        }
+      });
+      console.log('✅ Coordinates converted to numbers');
+    }
+    
+    function getHabitatColor(type) {
+      const colors = {
+        'tropical': '#ff6b6b',
+        'temperate': '#4ecdc4',
+        'polar': '#45b7d1',
+        'arctic': '#45b7d1',
+        'subtropical': '#96ceb4',
+        'savanna': '#feca57',
+        'forest': '#2ecc71',
+        'mountain': '#8e44ad',
+        'boreal': '#27ae60',
+        'mediterranean': '#f39c12',
+        'arid': '#e67e22',
+        'unknown': '#ffffff'
+      };
+      return colors[type] || '#ffffff';
+    }
     
     function initMap() {
       // Initialize the map
@@ -305,6 +187,9 @@
       // Add habitat markers
       addHabitatMarkers();
       
+      // Initialize button text
+      updateToggleButtonText();
+      
       // Fit map to show all markers
       if (markers.length > 0) {
         const group = new L.featureGroup(markers);
@@ -313,62 +198,129 @@
     }
     
     function addHabitatMarkers() {
+      console.log('=== STARTING MARKER CREATION ===');
+      console.log('Full habitat data:', JSON.stringify(habitatData, null, 2));
+      console.log('Number of habitats:', habitatData.habitats.length);
+      
+      // First, let's test with a known good coordinate to see if the map works
+      console.log('Testing with known coordinate: New York (40.7128, -74.0060)');
+      const testMarker = L.marker([40.7128, -74.0060]).addTo(map);
+      testMarker.bindPopup('Test: New York - This should be in NYC');
+      setTimeout(() => {
+        map.removeLayer(testMarker);
+        console.log('Test marker removed, proceeding with habitat markers...');
+      }, 3000);
+      
+      // Clear any existing markers first
+      markers.forEach(marker => {
+        map.removeLayer(marker);
+      });
+      markers = [];
+      
       habitatData.habitats.forEach((habitat, index) => {
-        const color = getHabitatColor(habitat.type);
+        console.log(`\n--- Processing Habitat ${index + 1} ---`);
+        console.log('Raw habitat data:', habitat);
+        console.log('Raw lat type:', typeof habitat.lat, 'value:', habitat.lat);
+        console.log('Raw lng type:', typeof habitat.lng, 'value:', habitat.lng);
         
-        // Create custom marker icon
+        // Get coordinates (now guaranteed to be numbers from preprocessing)
+        const lat = habitat.lat;
+        const lng = habitat.lng;
+        
+        console.log(`Final coordinates: lat=${lat} (type: ${typeof lat}), lng=${lng} (type: ${typeof lng})`);
+        
+        // Validate coordinates
+        if (isNaN(lat) || isNaN(lng)) {
+          console.error(`❌ Invalid coordinates for ${habitat.name}: lat=${lat}, lng=${lng}`);
+          return;
+        }
+        
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+          console.error(`❌ Coordinates out of range for ${habitat.name}: lat=${lat}, lng=${lng}`);
+          return;
+        }
+        
+        console.log(`✅ Valid coordinates: [${lat}, ${lng}]`);
+        
+        // CRITICAL FIX: Leaflet expects [LATITUDE, LONGITUDE] format
+        // Our data might be in [LONGITUDE, LATITUDE] format
+        // Let's test both formats to see which works
+        
+        // Try CORRECT format first: [lat, lng]
+        console.log(`Testing CORRECT format: [${lat}, ${lng}]`);
+        const correctCoords = [lat, lng];
+        
+        // Try WRONG format: [lng, lat] 
+        console.log(`Testing WRONG format: [${lng}, ${lat}]`);
+        const wrongCoords = [lng, lat];
+        
+        // Create a colored marker icon
+        const color = getHabitatColor(habitat.type);
         const markerIcon = L.divIcon({
           className: 'custom-marker',
-          html: `<div style="background: ${color}; width: 100%; height: 100%; border-radius: 50%; border: 2px solid white;"></div>`,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10]
+          html: `<div style="
+            background: ${color};
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            display: block;
+          "></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+          popupAnchor: [0, -8]
         });
         
-        // Create marker
-        const marker = L.marker([habitat.lat, habitat.lng], {
+        // Create marker with CORRECT format
+        const marker = L.marker(correctCoords, {
           icon: markerIcon
         }).addTo(map);
         
-        // Add popup with habitat information
+        // Add popup
         marker.bindPopup(`
-          <div class="custom-popup">
-            <div class="popup-title">${habitat.name}</div>
-            <div class="popup-info">
-              <strong>Type:</strong> ${habitat.type}<br>
-              <strong>Coordinates:</strong> ${habitat.lat.toFixed(2)}°, ${habitat.lng.toFixed(2)}°
-            </div>
+          <div style="font-family: Arial, sans-serif; padding: 8px;">
+            <h4 style="margin: 0 0 8px 0; color: #333;">${habitat.name}</h4>
+            <p style="margin: 4px 0; font-size: 12px;"><strong>Type:</strong> ${habitat.type}</p>
+            <p style="margin: 4px 0; font-size: 12px;"><strong>Coordinates:</strong> ${lat.toFixed(4)}°, ${lng.toFixed(4)}°</p>
           </div>
         `);
         
-        // Add pulsing animation
-        marker.getElement().classList.add('pulsing');
-        
         markers.push(marker);
+        console.log(`✅ Marker ${index + 1} created at [${lat}, ${lng}] for ${habitat.name}`);
       });
-    }
-    
-    function getHabitatColor(type) {
-      const colors = {
-        'tropical': '#ff6b6b',
-        'temperate': '#4ecdc4',
-        'polar': '#45b7d1',
-        'arctic': '#45b7d1',
-        'subtropical': '#96ceb4',
-        'savanna': '#feca57',
-        'forest': '#2ecc71',
-        'mountain': '#8e44ad',
-        'boreal': '#27ae60',
-        'mediterranean': '#f39c12',
-        'arid': '#e67e22',
-        'unknown': '#ffffff'
-      };
-      return colors[type] || '#ffffff';
+      
+      console.log(`\n=== MARKER CREATION COMPLETE ===`);
+      console.log(`Total markers created: ${markers.length}`);
+      
+      // Wait a bit then check marker positions
+      setTimeout(() => {
+        console.log('\n=== CHECKING MARKER POSITIONS ===');
+        markers.forEach((marker, index) => {
+          const pos = marker.getLatLng();
+          console.log(`Marker ${index + 1}: ${pos.lat}, ${pos.lng}`);
+        });
+        
+        // Fit map to show all markers
+        if (markers.length > 0) {
+          const group = new L.featureGroup(markers);
+          map.fitBounds(group.getBounds().pad(0.1));
+          console.log('Map fitted to show all markers');
+        }
+      }, 500);
     }
     
     function fitToMarkers() {
       if (markers.length > 0) {
         const group = new L.featureGroup(markers);
         map.fitBounds(group.getBounds().pad(0.1));
+      }
+    }
+    
+    function updateToggleButtonText() {
+      const toggleBtn = document.querySelector('.control-btn.secondary .btn-text');
+      if (toggleBtn) {
+        toggleBtn.textContent = markersVisible ? 'Hide Markers' : 'Show Markers';
       }
     }
     
@@ -382,8 +334,7 @@
         }
       });
       
-      document.querySelector('.control-btn:nth-child(2)').textContent = 
-        markersVisible ? 'Hide Markers' : 'Show Markers';
+      updateToggleButtonText();
     }
     
     function resetView() {
@@ -391,7 +342,7 @@
     }
     
     function flyToLocation(lat, lng, name) {
-      map.flyTo([lat, lng], 6, {
+      map.flyTo([lat, lng], 8, {
         animate: true,
         duration: 1.5
       });
@@ -399,36 +350,28 @@
       // Find and open the popup for this marker
       markers.forEach(marker => {
         if (marker.getLatLng().lat === lat && marker.getLatLng().lng === lng) {
-          marker.openPopup();
+          setTimeout(() => marker.openPopup(), 1000);
         }
       });
     }
     
     function downloadMap() {
-      // Create a canvas element to capture the map
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      // Create a simple download function
+      const mapData = {
+        species: habitatData.name,
+        habitats: habitatData.habitats.length,
+        coordinates: habitatData.habitats.map(h => `${h.name}: ${h.lat}, ${h.lng}`).join('\n')
+      };
       
-      // Get map container dimensions
-      const mapContainer = document.getElementById('map');
-      canvas.width = mapContainer.offsetWidth;
-      canvas.height = mapContainer.offsetHeight;
+      const content = `Habitat Map: ${mapData.species}\n\nTotal Habitats: ${mapData.habitats}\n\nCoordinates:\n${mapData.coordinates}`;
       
-      // Fill with background
-      ctx.fillStyle = '#f0f0f0';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Add text overlay
-      ctx.fillStyle = '#333';
-      ctx.font = '16px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`Habitat Map: ${habitatData.name}`, canvas.width / 2, 30);
-      
-      // Download the image
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = `turtle-habitat-map-${habitatData.name.replace(/\s+/g, '-').toLowerCase()}.png`;
-      link.href = canvas.toDataURL();
+      link.href = url;
+      link.download = `habitat-map-${habitatData.name.replace(/\s+/g, '-').toLowerCase()}.txt`;
       link.click();
+      URL.revokeObjectURL(url);
     }
     
     // Handle window resize
@@ -438,10 +381,50 @@
       }, 100);
     });
     
+    // Test function to add sample markers
+    function addTestMarkers() {
+      console.log('Adding test markers...');
+      
+      // Add some test markers with known coordinates
+      const testLocations = [
+        { name: 'New York', lat: 40.7128, lng: -74.0060 },
+        { name: 'London', lat: 51.5074, lng: -0.1278 },
+        { name: 'Tokyo', lat: 35.6762, lng: 139.6503 },
+        { name: 'Sydney', lat: -33.8688, lng: 151.2093 }
+      ];
+      
+      testLocations.forEach((location, index) => {
+        // Create a simple blue test marker
+        const testIcon = L.divIcon({
+          className: 'test-marker',
+          html: `<div style="
+            background: #007bff; 
+            width: 16px; 
+            height: 16px; 
+            border-radius: 50%; 
+            border: 2px solid white; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            display: block;
+          "></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+          popupAnchor: [0, -8]
+        });
+        
+        const marker = L.marker([location.lat, location.lng], {
+          icon: testIcon
+        }).addTo(map);
+        marker.bindPopup(`<b>${location.name}</b><br>Test marker ${index + 1}`);
+        console.log(`Test marker ${index + 1} added at [${location.lat}, ${location.lng}]`);
+      });
+      
+      // Fit map to show test markers
+      const group = new L.featureGroup(map._layers);
+      map.fitBounds(group.getBounds().pad(0.1));
+    }
+    
     // Initialize when page loads
     window.addEventListener('load', initMap);
   </script>
 </body>
 </html>
-
-

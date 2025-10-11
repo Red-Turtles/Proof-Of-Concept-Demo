@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Test Map - Coordinate Debug</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+    #map { height: 600px; width: 100%; border: 2px solid #333; }
+    .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Map Coordinate Test</h1>
+  
+  <div class="debug">
+    <h3>Test Coordinates:</h3>
+    <ul>
+      <li>New York: [40.7128, -74.0060]</li>
+      <li>London: [51.5074, -0.1278]</li>
+      <li>Tokyo: [35.6762, 139.6503]</li>
+      <li>Serengeti (Lion): [-2.0, 34.0]</li>
+      <li>Alaska (Bear): [64.0, -150.0]</li>
+    </ul>
+  </div>
+  
+  <div id="map"></div>
+  
+  <div class="debug">
+    <h3>Console Output:</h3>
+    <p>Open browser console (F12) to see coordinate analysis</p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    console.log('=== MAP TEST STARTING ===');
+    
+    // Initialize map
+    const map = L.map('map').setView([20, 0], 2);
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Test coordinates - known good locations
+    // IMPORTANT: Leaflet expects [LATITUDE, LONGITUDE] format
+    const testLocations = [
+      { name: 'New York', coords: [40.7128, -74.0060], color: 'red' },     // [lat, lng]
+      { name: 'London', coords: [51.5074, -0.1278], color: 'blue' },      // [lat, lng]
+      { name: 'Tokyo', coords: [35.6762, 139.6503], color: 'green' },     // [lat, lng]
+      { name: 'Serengeti (Lion)', coords: [-2.0, 34.0], color: 'orange' }, // [lat, lng]
+      { name: 'Alaska (Bear)', coords: [64.0, -150.0], color: 'purple' }   // [lat, lng]
+    ];
+    
+    console.log('=== COORDINATE FORMAT TEST ===');
+    console.log('Leaflet expects: [LATITUDE, LONGITUDE]');
+    console.log('Testing format:', testLocations[0].coords);
+    
+    console.log('=== TESTING KNOWN COORDINATES ===');
+    
+    testLocations.forEach((location, index) => {
+      console.log(`\n--- Test Location ${index + 1}: ${location.name} ---`);
+      console.log(`Coordinates: [${location.coords[0]}, ${location.coords[1]}]`);
+      console.log(`Lat type: ${typeof location.coords[0]}, Lng type: ${typeof location.coords[1]}`);
+      
+      // Create marker with CORRECT format [lat, lng]
+      const marker = L.marker(location.coords).addTo(map);
+      marker.bindPopup(`<b>${location.name}</b><br>CORRECT: [${location.coords[0]}, ${location.coords[1]}]`);
+      
+      // Also test WRONG format [lng, lat] to see the difference
+      const wrongCoords = [location.coords[1], location.coords[0]]; // Swap lat/lng
+      const wrongMarker = L.marker(wrongCoords).addTo(map);
+      wrongMarker.bindPopup(`<b>${location.name} WRONG</b><br>WRONG: [${wrongCoords[0]}, ${wrongCoords[1]}]`);
+      
+      console.log(`✅ CORRECT marker: [${location.coords[0]}, ${location.coords[1]}]`);
+      console.log(`❌ WRONG marker: [${wrongCoords[0]}, ${wrongCoords[1]}]`);
+    });
+    
+    // Test with habitat data from the API
+    console.log('\n=== TESTING HABITAT DATA FROM API ===');
+    
+    fetch('/api/habitat/panthera%20leo')
+      .then(response => response.json())
+      .then(data => {
+        console.log('API Response:', data);
+        
+        if (data.habitats) {
+          data.habitats.forEach((habitat, index) => {
+            console.log(`\n--- API Habitat ${index + 1}: ${habitat.name} ---`);
+            console.log(`Raw lat: ${habitat.lat} (type: ${typeof habitat.lat})`);
+            console.log(`Raw lng: ${habitat.lng} (type: ${typeof habitat.lng})`);
+            
+            // Convert to numbers if needed
+            const lat = typeof habitat.lat === 'string' ? parseFloat(habitat.lat) : habitat.lat;
+            const lng = typeof habitat.lng === 'string' ? parseFloat(habitat.lng) : habitat.lng;
+            
+            console.log(`Converted lat: ${lat} (type: ${typeof lat})`);
+            console.log(`Converted lng: ${lng} (type: ${typeof lng})`);
+            
+            // Create marker with converted coordinates
+            const marker = L.marker([lat, lng]).addTo(map);
+            marker.bindPopup(`<b>${habitat.name}</b><br>API: [${lat}, ${lng}]`);
+            
+            console.log(`✅ API marker created for ${habitat.name}`);
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching API data:', error);
+      });
+    
+    console.log('\n=== MAP TEST COMPLETE ===');
+  </script>
+</body>
+</html>
