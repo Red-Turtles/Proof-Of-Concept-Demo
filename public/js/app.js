@@ -51,19 +51,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // CAPTCHA form handling
+    // CAPTCHA form handling (supports both math and Google reCAPTCHA)
     const captchaForm = document.getElementById('captcha-form');
     if (captchaForm) {
         captchaForm.addEventListener('submit', function(e) {
             const submitBtn = captchaForm.querySelector('.captcha-submit-btn');
             const answerInput = captchaForm.querySelector('input[name="captcha_answer"]');
-            
-            if (!answerInput.value) {
+            const recaptchaWidget = captchaForm.querySelector('.g-recaptcha');
+
+            if (recaptchaWidget) {
+                // For Google reCAPTCHA v2 checkbox, the widget ensures a token before submission
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Verifying...';
+                return;
+            }
+
+            if (answerInput && !answerInput.value) {
                 e.preventDefault();
                 showMessage('Please enter your answer', 'error');
                 return;
             }
-            
+
             // Show loading state
             submitBtn.disabled = true;
             submitBtn.textContent = 'Verifying...';
@@ -88,7 +96,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!securityStatus.is_trusted && securityStatus.rate_limited) {
                 showMessage('Security verification required after 2 image identifications', 'error');
-                loadCaptcha();
             } else if (!securityStatus.is_trusted) {
                 const remainingRequests = 2 - securityStatus.request_count;
                 if (remainingRequests > 0) {

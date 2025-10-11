@@ -47,7 +47,7 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org;"
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org; frame-src 'self' https://www.google.com https://www.gstatic.com;"
     return response
 
 # Configure logging
@@ -484,31 +484,72 @@ def index():
     """Serve the main page"""
     security_status = security.get_security_status()
     
-    # Generate CAPTCHA if rate limited
+    # Decide which CAPTCHA UI to show (Google reCAPTCHA if configured)
     captcha_data = None
+    use_recaptcha = False
+    recaptcha_site_key = os.getenv('RECAPTCHA_SITE_KEY')
     if security_status.get('rate_limited') and not security_status.get('is_trusted'):
-        captcha_data = security.generate_captcha()
+        if recaptcha_site_key:
+            use_recaptcha = True
+        else:
+            captcha_data = security.generate_captcha()
     
     return render_template('index.html', 
                          security_status=security_status,
-                         captcha_data=captcha_data)
+                         captcha_data=captcha_data,
+                         use_recaptcha=use_recaptcha,
+                         recaptcha_site_key=recaptcha_site_key)
 
 @app.route('/verify-captcha', methods=['POST'])
 def verify_captcha():
     """Handle CAPTCHA verification"""
+    # Prefer Google reCAPTCHA if token provided
+    recaptcha_token = request.form.get('g-recaptcha-response')
+    if recaptcha_token:
+        secret = os.getenv('RECAPTCHA_SECRET')
+        if not secret:
+            return render_template('index.html', 
+                                 security_status=security.get_security_status(),
+                                 use_recaptcha=True,
+                                 recaptcha_site_key=os.getenv('RECAPTCHA_SITE_KEY'),
+                                 error_message='Server misconfigured: missing RECAPTCHA_SECRET')
+        try:
+            verify_response = requests.post(
+                'https://www.google.com/recaptcha/api/siteverify',
+                data={
+                    'secret': secret,
+                    'response': recaptcha_token,
+                    'remoteip': request.remote_addr
+                },
+                timeout=10
+            )
+            verify_json = verify_response.json()
+            if verify_json.get('success'):
+                security.trust_browser()
+                return redirect('/')
+            else:
+                return render_template('index.html', 
+                                     security_status=security.get_security_status(),
+                                     use_recaptcha=True,
+                                     recaptcha_site_key=os.getenv('RECAPTCHA_SITE_KEY'),
+                                     error_message='reCAPTCHA verification failed. Please try again.')
+        except Exception:
+            return render_template('index.html', 
+                                 security_status=security.get_security_status(),
+                                 use_recaptcha=True,
+                                 recaptcha_site_key=os.getenv('RECAPTCHA_SITE_KEY'),
+                                 error_message='reCAPTCHA verification error. Please try again.')
+    
+    # Fallback: legacy math CAPTCHA
     captcha_id = request.form.get('captcha_id')
     captcha_answer = request.form.get('captcha_answer')
-    
     if not captcha_id or not captcha_answer:
         return render_template('index.html', 
                              security_status=security.get_security_status(),
                              error_message='Please enter a CAPTCHA answer')
-    
     if security.verify_captcha(captcha_id, captcha_answer):
-        # CAPTCHA verified successfully, redirect to main page
         return redirect('/')
     else:
-        # CAPTCHA failed, generate new one
         captcha_data = security.generate_captcha()
         return render_template('index.html', 
                              security_status=security.get_security_status(),

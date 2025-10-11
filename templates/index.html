@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Animal Species Identifier (PoC)</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  {% if use_recaptcha and recaptcha_site_key %}
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  {% endif %}
 </head>
 <body>
   <header>
@@ -25,7 +28,21 @@
       </div>
       
       <!-- CAPTCHA Section -->
-      {% if captcha_data %}
+      {% if use_recaptcha and recaptcha_site_key %}
+      <div id="captcha-section" class="captcha-section" style="display: block;">
+        <h3>Security Verification</h3>
+        {% if error_message %}
+        <div class="security-message error">{{ error_message }}</div>
+        {% endif %}
+        <form id="captcha-form" action="/verify-captcha" method="post">
+          <div class="captcha-container">
+            <div class="g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+            <button type="submit" class="captcha-submit-btn">Verify</button>
+          </div>
+        </form>
+        <p class="captcha-note">Protected by reCAPTCHA • <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy</a> • <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Terms</a></p>
+      </div>
+      {% elif captcha_data %}
       <div id="captcha-section" class="captcha-section" style="display: block;">
         <h3>Security Verification</h3>
         <p class="captcha-desc">Please solve the math problem to continue:</p>
