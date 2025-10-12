@@ -126,115 +126,115 @@ def create_design_document():
     
     # 3. Architecture Diagram
     ax3 = plt.subplot(4, 2, 3)
-    ax3.set_xlim(0, 12)
-    ax3.set_ylim(0, 12)
+    ax3.set_xlim(0, 16)
+    ax3.set_ylim(0, 14)
     ax3.axis('off')
     
-    ax3.text(6, 11.5, 'System Architecture', fontsize=16, fontweight='bold', 
+    ax3.text(8, 13.5, 'System Architecture', fontsize=16, fontweight='bold', 
              ha='center', color=colors['dark_green'])
     
-    # User
-    user_circle = Circle((2, 9.5), 0.8, facecolor=colors['yellow'], alpha=0.8, 
+    # User - Top left
+    user_circle = Circle((2, 11), 0.8, facecolor=colors['yellow'], alpha=0.8, 
                         edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(user_circle)
-    ax3.text(2, 9.5, 'User', fontsize=11, fontweight='bold', ha='center', va='center')
+    ax3.text(2, 11, 'User', fontsize=11, fontweight='bold', ha='center', va='center')
     
-    # Web Interface
-    web_rect = FancyBboxPatch((4.5, 8.5), 3, 1.5, boxstyle="round,pad=0.1", 
+    # Web Interface - Top center
+    web_rect = FancyBboxPatch((6, 10), 3, 1.5, boxstyle="round,pad=0.1", 
                              facecolor=colors['light_green'], alpha=0.8, 
                              edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(web_rect)
-    ax3.text(6, 9.25, 'Web Interface', fontsize=11, fontweight='bold', ha='center', va='center')
-    ax3.text(6, 8.8, 'HTML/CSS/JS', fontsize=9, ha='center', va='center', color=colors['dark_green'])
+    ax3.text(7.5, 10.75, 'Web Interface', fontsize=11, fontweight='bold', ha='center', va='center')
+    ax3.text(7.5, 10.3, 'HTML/CSS/JS', fontsize=9, ha='center', va='center', color=colors['dark_green'])
     
-    # Flask App
-    flask_rect = FancyBboxPatch((8.5, 8.5), 3, 1.5, boxstyle="round,pad=0.1", 
+    # Flask App - Top right
+    flask_rect = FancyBboxPatch((12, 10), 3, 1.5, boxstyle="round,pad=0.1", 
                                facecolor=colors['medium_green'], alpha=0.8, 
                                edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(flask_rect)
-    ax3.text(10, 9.25, 'Flask App', fontsize=11, fontweight='bold', ha='center', va='center', color=colors['white'])
-    ax3.text(10, 8.8, 'Python Backend', fontsize=9, ha='center', va='center', color=colors['white'])
+    ax3.text(13.5, 10.75, 'Flask App', fontsize=11, fontweight='bold', ha='center', va='center', color=colors['white'])
+    ax3.text(13.5, 10.3, 'Python Backend', fontsize=9, ha='center', va='center', color=colors['white'])
     
-    # AI API
-    ai_rect = FancyBboxPatch((4.5, 6), 3, 1.5, boxstyle="round,pad=0.1", 
+    # AI API - Bottom left
+    ai_rect = FancyBboxPatch((2, 7), 3, 1.5, boxstyle="round,pad=0.1", 
                             facecolor=colors['slate'], alpha=0.8, 
                             edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(ai_rect)
-    ax3.text(6, 6.75, 'Together.ai API', fontsize=11, fontweight='bold', ha='center', va='center', 
+    ax3.text(3.5, 7.75, 'Together.ai API', fontsize=11, fontweight='bold', ha='center', va='center', 
              color=colors['white'])
-    ax3.text(6, 6.3, 'Qwen2.5-VL Model', fontsize=9, ha='center', va='center', color=colors['white'])
+    ax3.text(3.5, 7.3, 'Qwen2.5-VL Model', fontsize=9, ha='center', va='center', color=colors['white'])
     
-    # File Storage
-    db_rect = FancyBboxPatch((8.5, 6), 3, 1.5, boxstyle="round,pad=0.1", 
+    # File Storage - Bottom right
+    db_rect = FancyBboxPatch((11, 7), 3, 1.5, boxstyle="round,pad=0.1", 
                             facecolor=colors['gray'], alpha=0.8, 
                             edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(db_rect)
-    ax3.text(10, 6.75, 'File Storage', fontsize=11, fontweight='bold', ha='center', va='center', 
+    ax3.text(12.5, 7.75, 'File Storage', fontsize=11, fontweight='bold', ha='center', va='center', 
              color=colors['white'])
-    ax3.text(10, 6.3, 'Temporary Files', fontsize=9, ha='center', va='center', color=colors['white'])
+    ax3.text(12.5, 7.3, 'Temporary Files', fontsize=9, ha='center', va='center', color=colors['white'])
     
-    # Security Layer
-    security_rect = FancyBboxPatch((2, 4), 8, 1, boxstyle="round,pad=0.1", 
+    # Security Layer - Bottom center
+    security_rect = FancyBboxPatch((6, 4), 4, 1, boxstyle="round,pad=0.1", 
                                   facecolor=colors['yellow'], alpha=0.3, 
                                   edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(security_rect)
-    ax3.text(6, 4.5, 'Security Layer (CAPTCHA, Rate Limiting, Browser Trust)', fontsize=10, fontweight='bold', ha='center', va='center', color=colors['dark_green'])
+    ax3.text(8, 4.5, 'Security Layer', fontsize=10, fontweight='bold', ha='center', va='center', color=colors['dark_green'])
+    ax3.text(8, 4.2, 'CAPTCHA • Rate Limiting • Browser Trust', fontsize=8, ha='center', va='center', color=colors['dark_green'])
     
-    # Improved Arrows with better positioning and styling
-    # User to Web Interface
-    ax3.annotate('', xy=(4.2, 9.5), xytext=(2.8, 9.5),
+    # Clear, non-overlapping arrows with proper spacing
+    # 1. User to Web Interface
+    ax3.annotate('', xy=(5.8, 11), xytext=(2.8, 11),
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green']))
+    ax3.text(4.3, 12, '1. Upload Image', fontsize=9, ha='center', va='center', 
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.9, edgecolor=colors['dark_green']))
+    
+    # 2. Web Interface to Flask App
+    ax3.annotate('', xy=(11.8, 10.75), xytext=(9, 10.75),
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green']))
+    ax3.text(10.4, 11.5, '2. Process Request', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.9, edgecolor=colors['dark_green']))
+    
+    # 3. Flask App to AI API
+    ax3.annotate('', xy=(5, 8.5), xytext=(11.5, 9.5),
                 arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green'], 
-                              connectionstyle="arc3,rad=0"))
-    ax3.text(3.5, 10.2, '1. Upload Image', fontsize=9, ha='center', va='center', 
-             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+                              connectionstyle="arc3,rad=-0.3"))
+    ax3.text(8.2, 8.8, '3. AI Analysis', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.9, edgecolor=colors['dark_green']))
     
-    # Web Interface to Flask App
-    ax3.annotate('', xy=(8.2, 9.25), xytext=(7.5, 9.25),
-                arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green'], 
-                              connectionstyle="arc3,rad=0"))
-    ax3.text(7.85, 10, '2. Process Request', fontsize=9, ha='center', va='center',
-             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
-    
-    # Flask App to AI API
-    ax3.annotate('', xy=(6, 7.5), xytext=(8.5, 8.2),
-                arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green'], 
-                              connectionstyle="arc3,rad=-0.2"))
-    ax3.text(7.25, 7.8, '3. AI Analysis', fontsize=9, ha='center', va='center',
-             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
-    
-    # Flask App to File Storage
-    ax3.annotate('', xy=(8.2, 6.75), xytext=(8.5, 8.2),
+    # 4. Flask App to File Storage
+    ax3.annotate('', xy=(11.8, 8.5), xytext=(12.5, 9.5),
                 arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green'], 
                               connectionstyle="arc3,rad=0.2"))
-    ax3.text(9.5, 7.5, '4. Store Temp File', fontsize=9, ha='center', va='center',
-             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+    ax3.text(13.2, 8.8, '4. Store File', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.9, edgecolor=colors['dark_green']))
     
-    # AI API to Flask App (response)
-    ax3.annotate('', xy=(8.2, 6.75), xytext=(7.5, 6.75),
+    # 5. AI API to Flask App (response)
+    ax3.annotate('', xy=(11.5, 9.5), xytext=(5, 8.5),
                 arrowprops=dict(arrowstyle='->', lw=3, color=colors['medium_green'], 
-                              connectionstyle="arc3,rad=0", linestyle='--'))
-    ax3.text(7.85, 5.5, '5. Species Data', fontsize=9, ha='center', va='center',
-             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+                              connectionstyle="arc3,rad=0.3", linestyle='--'))
+    ax3.text(8.2, 7.5, '5. Species Data', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.9, edgecolor=colors['medium_green']))
     
-    # Flask App to Web Interface (response)
-    ax3.annotate('', xy=(7.5, 8.5), xytext=(8.2, 8.5),
+    # 6. Flask App to Web Interface (response)
+    ax3.annotate('', xy=(9, 10.75), xytext=(11.8, 10.75),
                 arrowprops=dict(arrowstyle='->', lw=3, color=colors['medium_green'], 
-                              connectionstyle="arc3,rad=0", linestyle='--'))
-    ax3.text(7.85, 7.8, '6. Results', fontsize=9, ha='center', va='center',
-             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+                              linestyle='--'))
+    ax3.text(10.4, 9.5, '6. Results', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.9, edgecolor=colors['medium_green']))
     
-    # Web Interface to User (response)
-    ax3.annotate('', xy=(2.8, 9.5), xytext=(4.2, 9.5),
+    # 7. Web Interface to User (response)
+    ax3.annotate('', xy=(2.8, 11), xytext=(5.8, 11),
                 arrowprops=dict(arrowstyle='->', lw=3, color=colors['medium_green'], 
-                              connectionstyle="arc3,rad=0", linestyle='--'))
-    ax3.text(3.5, 8.8, '7. Display Results', fontsize=9, ha='center', va='center',
-             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+                              linestyle='--'))
+    ax3.text(4.3, 9.5, '7. Display Results', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.9, edgecolor=colors['medium_green']))
     
-    # Security layer connections
-    ax3.annotate('', xy=(6, 5), xytext=(6, 7.5),
+    # Security layer connection to Flask App
+    ax3.annotate('', xy=(13.5, 10), xytext=(8, 5),
                 arrowprops=dict(arrowstyle='->', lw=2, color=colors['yellow'], 
-                              connectionstyle="arc3,rad=0", alpha=0.7))
-    ax3.text(6.5, 6.2, 'Security Check', fontsize=8, ha='center', va='center', color=colors['dark_green'])
+                              connectionstyle="arc3,rad=0.2", alpha=0.7))
+    ax3.text(10.7, 7.2, 'Security Check', fontsize=8, ha='center', va='center', 
+             bbox=dict(boxstyle="round,pad=0.2", facecolor=colors['yellow'], alpha=0.8, edgecolor=colors['dark_green']))
     
     # 4. Security Features
     ax4 = plt.subplot(4, 2, 4)
