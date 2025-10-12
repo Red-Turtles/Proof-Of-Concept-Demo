@@ -126,54 +126,115 @@ def create_design_document():
     
     # 3. Architecture Diagram
     ax3 = plt.subplot(4, 2, 3)
-    ax3.set_xlim(0, 10)
-    ax3.set_ylim(0, 10)
+    ax3.set_xlim(0, 12)
+    ax3.set_ylim(0, 12)
     ax3.axis('off')
     
-    ax3.text(5, 9.5, 'System Architecture', fontsize=16, fontweight='bold', 
+    ax3.text(6, 11.5, 'System Architecture', fontsize=16, fontweight='bold', 
              ha='center', color=colors['dark_green'])
     
     # User
-    user_circle = Circle((1, 8), 0.8, facecolor=colors['yellow'], alpha=0.7, 
+    user_circle = Circle((2, 9.5), 0.8, facecolor=colors['yellow'], alpha=0.8, 
                         edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(user_circle)
-    ax3.text(1, 8, 'User', fontsize=10, fontweight='bold', ha='center', va='center')
+    ax3.text(2, 9.5, 'User', fontsize=11, fontweight='bold', ha='center', va='center')
     
     # Web Interface
-    web_rect = FancyBboxPatch((3, 7), 2.5, 1.5, boxstyle="round,pad=0.1", 
-                             facecolor=colors['light_green'], alpha=0.7, 
+    web_rect = FancyBboxPatch((4.5, 8.5), 3, 1.5, boxstyle="round,pad=0.1", 
+                             facecolor=colors['light_green'], alpha=0.8, 
                              edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(web_rect)
-    ax3.text(4.25, 7.75, 'Web Interface', fontsize=10, fontweight='bold', ha='center', va='center')
+    ax3.text(6, 9.25, 'Web Interface', fontsize=11, fontweight='bold', ha='center', va='center')
+    ax3.text(6, 8.8, 'HTML/CSS/JS', fontsize=9, ha='center', va='center', color=colors['dark_green'])
     
     # Flask App
-    flask_rect = FancyBboxPatch((6.5, 7), 2.5, 1.5, boxstyle="round,pad=0.1", 
-                               facecolor=colors['medium_green'], alpha=0.7, 
+    flask_rect = FancyBboxPatch((8.5, 8.5), 3, 1.5, boxstyle="round,pad=0.1", 
+                               facecolor=colors['medium_green'], alpha=0.8, 
                                edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(flask_rect)
-    ax3.text(7.75, 7.75, 'Flask App', fontsize=10, fontweight='bold', ha='center', va='center')
+    ax3.text(10, 9.25, 'Flask App', fontsize=11, fontweight='bold', ha='center', va='center', color=colors['white'])
+    ax3.text(10, 8.8, 'Python Backend', fontsize=9, ha='center', va='center', color=colors['white'])
     
     # AI API
-    ai_rect = FancyBboxPatch((3, 4.5), 2.5, 1.5, boxstyle="round,pad=0.1", 
-                            facecolor=colors['slate'], alpha=0.7, 
+    ai_rect = FancyBboxPatch((4.5, 6), 3, 1.5, boxstyle="round,pad=0.1", 
+                            facecolor=colors['slate'], alpha=0.8, 
                             edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(ai_rect)
-    ax3.text(4.25, 5.25, 'Together.ai', fontsize=10, fontweight='bold', ha='center', va='center', 
+    ax3.text(6, 6.75, 'Together.ai API', fontsize=11, fontweight='bold', ha='center', va='center', 
              color=colors['white'])
+    ax3.text(6, 6.3, 'Qwen2.5-VL Model', fontsize=9, ha='center', va='center', color=colors['white'])
     
-    # Database
-    db_rect = FancyBboxPatch((6.5, 4.5), 2.5, 1.5, boxstyle="round,pad=0.1", 
-                            facecolor=colors['gray'], alpha=0.7, 
+    # File Storage
+    db_rect = FancyBboxPatch((8.5, 6), 3, 1.5, boxstyle="round,pad=0.1", 
+                            facecolor=colors['gray'], alpha=0.8, 
                             edgecolor=colors['dark_green'], linewidth=2)
     ax3.add_patch(db_rect)
-    ax3.text(7.75, 5.25, 'File Storage', fontsize=10, fontweight='bold', ha='center', va='center', 
+    ax3.text(10, 6.75, 'File Storage', fontsize=11, fontweight='bold', ha='center', va='center', 
              color=colors['white'])
+    ax3.text(10, 6.3, 'Temporary Files', fontsize=9, ha='center', va='center', color=colors['white'])
     
-    # Arrows
-    ax3.arrow(1.8, 8, 1, 0, head_width=0.2, head_length=0.1, fc=colors['dark_green'], ec=colors['dark_green'])
-    ax3.arrow(5.5, 7.75, 0.8, 0, head_width=0.2, head_length=0.1, fc=colors['dark_green'], ec=colors['dark_green'])
-    ax3.arrow(7.75, 6.5, 0, -0.8, head_width=0.2, head_length=0.1, fc=colors['dark_green'], ec=colors['dark_green'])
-    ax3.arrow(7.75, 6.5, -1.5, -0.8, head_width=0.2, head_length=0.1, fc=colors['dark_green'], ec=colors['dark_green'])
+    # Security Layer
+    security_rect = FancyBboxPatch((2, 4), 8, 1, boxstyle="round,pad=0.1", 
+                                  facecolor=colors['yellow'], alpha=0.3, 
+                                  edgecolor=colors['dark_green'], linewidth=2)
+    ax3.add_patch(security_rect)
+    ax3.text(6, 4.5, 'Security Layer (CAPTCHA, Rate Limiting, Browser Trust)', fontsize=10, fontweight='bold', ha='center', va='center', color=colors['dark_green'])
+    
+    # Improved Arrows with better positioning and styling
+    # User to Web Interface
+    ax3.annotate('', xy=(4.2, 9.5), xytext=(2.8, 9.5),
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green'], 
+                              connectionstyle="arc3,rad=0"))
+    ax3.text(3.5, 10.2, '1. Upload Image', fontsize=9, ha='center', va='center', 
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+    
+    # Web Interface to Flask App
+    ax3.annotate('', xy=(8.2, 9.25), xytext=(7.5, 9.25),
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green'], 
+                              connectionstyle="arc3,rad=0"))
+    ax3.text(7.85, 10, '2. Process Request', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+    
+    # Flask App to AI API
+    ax3.annotate('', xy=(6, 7.5), xytext=(8.5, 8.2),
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green'], 
+                              connectionstyle="arc3,rad=-0.2"))
+    ax3.text(7.25, 7.8, '3. AI Analysis', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+    
+    # Flask App to File Storage
+    ax3.annotate('', xy=(8.2, 6.75), xytext=(8.5, 8.2),
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['dark_green'], 
+                              connectionstyle="arc3,rad=0.2"))
+    ax3.text(9.5, 7.5, '4. Store Temp File', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+    
+    # AI API to Flask App (response)
+    ax3.annotate('', xy=(8.2, 6.75), xytext=(7.5, 6.75),
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['medium_green'], 
+                              connectionstyle="arc3,rad=0", linestyle='--'))
+    ax3.text(7.85, 5.5, '5. Species Data', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+    
+    # Flask App to Web Interface (response)
+    ax3.annotate('', xy=(7.5, 8.5), xytext=(8.2, 8.5),
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['medium_green'], 
+                              connectionstyle="arc3,rad=0", linestyle='--'))
+    ax3.text(7.85, 7.8, '6. Results', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+    
+    # Web Interface to User (response)
+    ax3.annotate('', xy=(2.8, 9.5), xytext=(4.2, 9.5),
+                arrowprops=dict(arrowstyle='->', lw=3, color=colors['medium_green'], 
+                              connectionstyle="arc3,rad=0", linestyle='--'))
+    ax3.text(3.5, 8.8, '7. Display Results', fontsize=9, ha='center', va='center',
+             bbox=dict(boxstyle="round,pad=0.3", facecolor=colors['white'], alpha=0.8))
+    
+    # Security layer connections
+    ax3.annotate('', xy=(6, 5), xytext=(6, 7.5),
+                arrowprops=dict(arrowstyle='->', lw=2, color=colors['yellow'], 
+                              connectionstyle="arc3,rad=0", alpha=0.7))
+    ax3.text(6.5, 6.2, 'Security Check', fontsize=8, ha='center', va='center', color=colors['dark_green'])
     
     # 4. Security Features
     ax4 = plt.subplot(4, 2, 4)
@@ -237,37 +298,54 @@ def create_design_document():
     
     # 6. Data Flow
     ax6 = plt.subplot(4, 2, 6)
-    ax6.set_xlim(0, 10)
-    ax6.set_ylim(0, 10)
+    ax6.set_xlim(0, 12)
+    ax6.set_ylim(0, 12)
     ax6.axis('off')
     
-    ax6.text(5, 9.5, 'Data Flow & Processing', fontsize=16, fontweight='bold', 
+    ax6.text(6, 11.5, 'Data Flow & Processing', fontsize=16, fontweight='bold', 
              ha='center', color=colors['dark_green'])
     
-    # Process steps
+    # Process steps with better spacing
     steps = [
-        ('1. Image Upload', 'User uploads animal photo', 1, 8.5),
-        ('2. Security Check', 'Rate limiting & CAPTCHA', 1, 7),
-        ('3. File Processing', 'Secure temp file creation', 1, 5.5),
-        ('4. AI Analysis', 'Together.ai species identification', 1, 4),
-        ('5. Results Display', 'Species info & habitat map', 1, 2.5),
-        ('6. Cleanup', 'Automatic file deletion', 1, 1)
+        ('1. Image Upload', 'User uploads animal photo\n(PNG, JPG, WEBP, etc.)', 1, 10),
+        ('2. Security Check', 'Rate limiting & CAPTCHA\nverification', 1, 8.2),
+        ('3. File Processing', 'Secure temp file creation\nwith randomized names', 1, 6.4),
+        ('4. AI Analysis', 'Together.ai species\nidentification', 1, 4.6),
+        ('5. Results Display', 'Species info & habitat\nmap visualization', 1, 2.8),
+        ('6. Cleanup', 'Automatic file deletion\nand cleanup', 1, 1)
     ]
     
     for i, (step, desc, x, y) in enumerate(steps):
-        # Step box
-        step_box = FancyBboxPatch((x, y-0.6), 3, 1, boxstyle="round,pad=0.1", 
-                                facecolor=colors['light_green'], alpha=0.3, 
-                                edgecolor=colors['dark_green'], linewidth=1)
+        # Step box with better styling
+        step_box = FancyBboxPatch((x, y-0.8), 4, 1.4, boxstyle="round,pad=0.1", 
+                                facecolor=colors['light_green'], alpha=0.2, 
+                                edgecolor=colors['dark_green'], linewidth=2)
         ax6.add_patch(step_box)
-        ax6.text(x+1.5, y+0.1, step, fontsize=10, fontweight='bold', ha='center', 
+        ax6.text(x+2, y+0.2, step, fontsize=11, fontweight='bold', ha='center', 
                 color=colors['dark_green'])
-        ax6.text(x+0.2, y-0.3, desc, fontsize=8, ha='left', va='top', wrap=True)
+        ax6.text(x+0.2, y-0.4, desc, fontsize=9, ha='left', va='top', wrap=True, color=colors['gray'])
         
-        # Arrow to next step
+        # Improved arrow to next step
         if i < len(steps) - 1:
-            ax6.arrow(x+1.5, y-0.6, 0, -0.8, head_width=0.15, head_length=0.1, 
-                     fc=colors['dark_green'], ec=colors['dark_green'])
+            ax6.annotate('', xy=(x+2, y-0.8), xytext=(x+2, y-0.1),
+                        arrowprops=dict(arrowstyle='->', lw=2, color=colors['dark_green'], 
+                                      connectionstyle="arc3,rad=0"))
+    
+    # Add parallel processing indicators
+    ax6.text(6.5, 9.5, 'Parallel Processing:', fontsize=10, fontweight='bold', ha='left', color=colors['dark_green'])
+    ax6.text(6.5, 9, '• File validation', fontsize=8, ha='left', color=colors['gray'])
+    ax6.text(6.5, 8.7, '• Image preprocessing', fontsize=8, ha='left', color=colors['gray'])
+    ax6.text(6.5, 8.4, '• Security checks', fontsize=8, ha='left', color=colors['gray'])
+    
+    # Add timing information
+    timing_box = FancyBboxPatch((6.5, 6.5), 4.5, 2, boxstyle="round,pad=0.1", 
+                               facecolor=colors['yellow'], alpha=0.1, 
+                               edgecolor=colors['dark_green'], linewidth=1)
+    ax6.add_patch(timing_box)
+    ax6.text(8.75, 7.8, 'Processing Times', fontsize=10, fontweight='bold', ha='center', color=colors['dark_green'])
+    ax6.text(6.7, 7.3, '• Upload: < 1s', fontsize=8, ha='left', color=colors['gray'])
+    ax6.text(6.7, 7, '• AI Analysis: 2-5s', fontsize=8, ha='left', color=colors['gray'])
+    ax6.text(6.7, 6.7, '• Results: < 1s', fontsize=8, ha='left', color=colors['gray'])
     
     # 7. File Structure
     ax7 = plt.subplot(4, 2, 7)
