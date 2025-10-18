@@ -827,6 +827,390 @@ footer {
 }
 
 /* Results Page Styles */
+.results-main {
+  background: #f8fffe;
+  min-height: calc(100vh - 160px);
+  padding-top: 80px;
+}
+
+.results-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* Main Species Card */
+.species-main-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid var(--medium-green);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.species-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.species-title-section {
+  flex: 1;
+}
+
+.species-name {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.5px;
+}
+
+.species-scientific {
+  font-size: 1.1rem;
+  color: #718096;
+  font-style: italic;
+  margin: 0;
+}
+
+.conservation-status {
+  margin-left: 1rem;
+}
+
+.status-badge {
+  background: #E53935;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.species-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.species-image-section {
+  display: flex;
+  justify-content: center;
+}
+
+.species-image-container {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--medium-green);
+}
+
+.species-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.species-info-section {
+  padding-left: 1rem;
+}
+
+.info-item {
+  margin-bottom: 1.5rem;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-icon {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.info-icon i {
+  font-size: 1.1rem;
+  color: var(--medium-green);
+  margin-right: 0.5rem;
+}
+
+.info-content {
+  margin-left: 1.5rem;
+}
+
+.info-label {
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+
+.info-value {
+  color: #4a5568;
+  line-height: 1.5;
+  font-size: 1rem;
+}
+
+/* Information Cards Grid */
+.info-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.info-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.card-icon {
+  font-size: 1.2rem;
+  margin-right: 0.75rem;
+  color: var(--medium-green);
+}
+
+.card-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+}
+
+.card-content {
+  color: #4a5568;
+  line-height: 1.6;
+}
+
+.card-content p {
+  margin: 0;
+}
+
+/* Fun Fact Card */
+.fun-fact-card {
+  background: #FFFBEB;
+  border: 1px solid #D9E8D9;
+}
+
+.fun-fact-card .card-icon {
+  color: var(--medium-green);
+}
+
+/* Conservation Card */
+.conservation-card {
+  border: 1px solid #F0D9D9;
+}
+
+.conservation-card .card-icon {
+  color: #E53935;
+}
+
+.conservation-detail {
+  margin-bottom: 1rem;
+}
+
+.conservation-detail:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+}
+
+.detail-value {
+  color: #4a5568;
+  line-height: 1.5;
+}
+
+/* Habitat Card */
+.habitat-card {
+  border: 1px solid #D9E8D9;
+}
+
+.habitat-card .card-icon {
+  color: var(--medium-green);
+}
+
+.habitat-detail {
+  margin-bottom: 1rem;
+}
+
+.habitat-detail:last-child {
+  margin-bottom: 0;
+}
+
+.country-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.country-tag {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.country-tag:hover {
+  background: #e2e8f0;
+  transform: scale(1.05);
+}
+
+.map-preview {
+  margin-top: 0.5rem;
+}
+
+.map-placeholder {
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.map-placeholder:hover {
+  border-color: var(--medium-green);
+  background: #f0f9ff;
+  color: var(--medium-green);
+}
+
+.map-placeholder i {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.primary-btn {
+  background: var(--medium-green);
+  color: #ffffff;
+}
+
+.primary-btn:hover {
+  background: var(--dark-green);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(45, 106, 79, 0.3);
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.secondary-btn {
+  background: transparent;
+  color: var(--medium-green);
+  border: 2px solid var(--medium-green);
+}
+
+.secondary-btn:hover {
+  background: var(--medium-green);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(45, 106, 79, 0.3);
+  text-decoration: none;
+}
+
+/* No Animal Card */
+.no-animal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 3rem;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+.no-animal-content {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.no-animal-icon {
+  font-size: 4rem;
+  color: #9ca3af;
+  margin-bottom: 1.5rem;
+}
+
+.no-animal-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 1rem;
+}
+
+.no-animal-description {
+  font-size: 1.1rem;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 2rem;
+}
+
+/* Embedded Map Container */
+.embedded-map-container {
+  margin-top: 0.5rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#embedded-map {
+  width: 100%;
+  height: 300px;
+  border-radius: 8px;
+}
+
+/* Legacy styles for backward compatibility */
 .result-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1253,5 +1637,43 @@ img.preview {
   
   .discovery-upload-area .file-types {
     font-size: 0.85rem;
+  }
+
+  /* Results Page Mobile */
+  .results-title {
+    font-size: 2rem;
+  }
+
+  .results-subtitle {
+    font-size: 1rem;
+  }
+
+  .species-name {
+    font-size: 1.5rem;
+  }
+
+  .species-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .species-info-section {
+    padding-left: 0;
+  }
+
+  .info-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .action-btn {
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
   }
 }
