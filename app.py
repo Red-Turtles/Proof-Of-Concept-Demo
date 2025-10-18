@@ -226,7 +226,7 @@ def identify_turtle_species_together_ai(image_path):
                         {
                             "type": "text",
                             "text": """Please identify the animal species in this image. 
-                            Provide the scientific name, common name, animal type (mammal, bird, reptile, amphibian, fish, invertebrate), and a brief description of key identifying features. 
+                            Provide the scientific name, common name, animal type (mammal, bird, reptile, amphibian, fish, invertebrate), conservation status, and a brief description of key identifying features. 
                             If this is not an animal or if you cannot clearly identify the species, please state that clearly.
                             
                             IMPORTANT: Format your response as valid JSON with the following exact structure:
@@ -235,6 +235,7 @@ def identify_turtle_species_together_ai(image_path):
                                 "species": "scientific name or Unknown",
                                 "common_name": "common name or Unknown",
                                 "animal_type": "mammal/bird/reptile/amphibian/fish/invertebrate/unknown",
+                                "conservation_status": "Least Concern/Near Threatened/Vulnerable/Endangered/Critically Endangered/Data Deficient/Unknown",
                                 "confidence": "high/medium/low",
                                 "description": "key identifying features",
                                 "notes": "any additional notes"
@@ -287,9 +288,11 @@ def identify_turtle_species_together_ai(image_path):
                 logger.warning(f"Together.ai response not in expected JSON format: {str(e)}")
                 logger.warning(f"Raw response: {content[:200]}...")
                 return {
-                    "is_turtle": True,
+                    "is_animal": True,
                     "species": "Unknown",
                     "common_name": "Unknown",
+                    "animal_type": "unknown",
+                    "conservation_status": "Unknown",
                     "confidence": "low",
                     "description": content,
                     "notes": "Response was not in expected JSON format"
@@ -301,6 +304,142 @@ def identify_turtle_species_together_ai(image_path):
     except Exception as e:
         logger.error(f"Error calling Together.ai API: {str(e)}")
         return {"error": "Service temporarily unavailable"}
+
+def get_conservation_info(species_name, common_name, conservation_status):
+    """Get detailed conservation information for a species"""
+    # Comprehensive conservation database
+    conservation_data = {
+        # Least Concern species
+        "panthera leo": {
+            "status": "Vulnerable",
+            "population": "20,000-25,000 mature individuals",
+            "trend": "Decreasing",
+            "threats": "Habitat loss, human-wildlife conflict, poaching, prey depletion"
+        },
+        "ursus arctos": {
+            "status": "Least Concern",
+            "population": "200,000+ individuals worldwide",
+            "trend": "Stable",
+            "threats": "Habitat fragmentation, hunting in some regions"
+        },
+        "elephas maximus": {
+            "status": "Endangered",
+            "population": "40,000-50,000 individuals",
+            "trend": "Decreasing",
+            "threats": "Habitat loss, human-elephant conflict, poaching"
+        },
+        "canis lupus": {
+            "status": "Least Concern",
+            "population": "300,000+ individuals",
+            "trend": "Stable",
+            "threats": "Persecution, habitat loss, disease"
+        },
+        
+        # Birds
+        "aquila chrysaetos": {
+            "status": "Least Concern",
+            "population": "170,000-250,000 mature individuals",
+            "trend": "Stable",
+            "threats": "Habitat loss, persecution, lead poisoning"
+        },
+        "aptenodytes forsteri": {
+            "status": "Near Threatened",
+            "population": "595,000 mature individuals",
+            "trend": "Stable",
+            "threats": "Climate change, fishing activities"
+        },
+        "turdus migratorius": {
+            "status": "Least Concern",
+            "population": "320,000,000 mature individuals",
+            "trend": "Increasing",
+            "trend": "Stable"
+        },
+        
+        # Reptiles
+        "chelonia mydas": {
+            "status": "Endangered",
+            "population": "85,000-90,000 nesting females",
+            "trend": "Decreasing",
+            "threats": "Climate change, ocean pollution, fishing nets, illegal harvesting"
+        },
+        "crocodylus niloticus": {
+            "status": "Least Concern",
+            "population": "250,000-500,000 mature individuals",
+            "trend": "Stable",
+            "threats": "Habitat destruction, hunting"
+        },
+        
+        # Amphibians
+        "rana catesbeiana": {
+            "status": "Least Concern",
+            "population": "Large and stable",
+            "trend": "Stable",
+            "threats": "Habitat loss, pollution, invasive species"
+        },
+        
+        # Fish
+        "thunnus thynnus": {
+            "status": "Endangered",
+            "population": "Unknown but declining",
+            "trend": "Decreasing",
+            "threats": "Overfishing, bycatch, habitat degradation"
+        },
+        "carcharodon carcharias": {
+            "status": "Vulnerable",
+            "population": "Unknown",
+            "trend": "Unknown",
+            "threats": "Overfishing, bycatch, habitat loss"
+        },
+        
+        # Invertebrates
+        "apis mellifera": {
+            "status": "Data Deficient",
+            "population": "Unknown",
+            "trend": "Unknown",
+            "threats": "Pesticides, habitat loss, diseases, climate change"
+        },
+        "danaus plexippus": {
+            "status": "Endangered",
+            "population": "Unknown but declining",
+            "trend": "Decreasing",
+            "threats": "Habitat loss, pesticides, climate change"
+        }
+    }
+    
+    # Try to find by scientific name first
+    species_key = species_name.lower().strip() if species_name else ""
+    if species_key in conservation_data:
+        return conservation_data[species_key]
+    
+    # Try to find by common name
+    for key, data in conservation_data.items():
+        if common_name and common_name.lower().strip() in data.get("name", "").lower():
+            return data
+    
+    # Return default based on AI-provided conservation status
+    default_data = {
+        "status": conservation_status or "Unknown",
+        "population": "Population data not available",
+        "trend": "Unknown",
+        "threats": "Conservation threats vary by species and region"
+    }
+    
+    # Customize based on conservation status
+    if conservation_status:
+        if "endangered" in conservation_status.lower():
+            default_data["trend"] = "Decreasing"
+            default_data["threats"] = "Habitat loss, climate change, human activities"
+        elif "vulnerable" in conservation_status.lower():
+            default_data["trend"] = "Decreasing"
+            default_data["threats"] = "Habitat degradation, hunting, pollution"
+        elif "least concern" in conservation_status.lower():
+            default_data["trend"] = "Stable"
+            default_data["threats"] = "General habitat protection needed"
+        elif "near threatened" in conservation_status.lower():
+            default_data["trend"] = "Stable to decreasing"
+            default_data["threats"] = "Monitoring needed, potential future threats"
+    
+    return default_data
 
 def get_animal_habitat_data(species_name, common_name, animal_type):
     """Get habitat and distribution data for any animal species"""
@@ -621,10 +760,20 @@ def upload_file():
         
         logger.info(f"Successfully processed file: {unique_filename}")
         
+        # Get conservation information
+        conservation_info = None
+        if result.get('is_animal') and not result.get('error'):
+            conservation_info = get_conservation_info(
+                result.get('species', ''),
+                result.get('common_name', ''),
+                result.get('conservation_status', '')
+            )
+        
         return render_template('results.html', 
                              result=result, 
                              image_data=image_data, 
-                             image_mime=image_mime)
+                             image_mime=image_mime,
+                             conservation_info=conservation_info)
         
     except Exception as e:
         # Log the actual error internally

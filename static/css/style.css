@@ -880,13 +880,37 @@ footer {
 }
 
 .status-badge {
-  background: #E53935;
-  color: #ffffff;
   padding: 0.5rem 1rem;
   border-radius: 20px;
   font-size: 0.9rem;
   font-weight: 600;
   display: inline-block;
+  color: #ffffff;
+}
+
+.status-badge.endangered {
+  background: #E53935;
+}
+
+.status-badge.vulnerable {
+  background: #FF9800;
+}
+
+.status-badge.near-threatened {
+  background: #FFC107;
+  color: #000000;
+}
+
+.status-badge.least-concern {
+  background: #4CAF50;
+}
+
+.status-badge.data-deficient {
+  background: #9E9E9E;
+}
+
+.status-badge.unknown {
+  background: #607D8B;
 }
 
 .species-content {
@@ -927,20 +951,10 @@ footer {
   margin-bottom: 0;
 }
 
-.info-icon {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.info-icon i {
-  font-size: 1.1rem;
+.info-icon-inline {
+  font-size: 1rem;
   color: var(--medium-green);
   margin-right: 0.5rem;
-}
-
-.info-content {
-  margin-left: 1.5rem;
 }
 
 .info-label {

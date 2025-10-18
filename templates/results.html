@@ -48,7 +48,24 @@
             {% endif %}
           </div>
           <div class="conservation-status">
-            <span class="status-badge endangered">Endangered</span>
+            {% if conservation_info %}
+              {% set status = conservation_info.status %}
+              {% if status == "Endangered" or status == "Critically Endangered" %}
+                <span class="status-badge endangered">{{ status }}</span>
+              {% elif status == "Vulnerable" %}
+                <span class="status-badge vulnerable">{{ status }}</span>
+              {% elif status == "Near Threatened" %}
+                <span class="status-badge near-threatened">{{ status }}</span>
+              {% elif status == "Least Concern" %}
+                <span class="status-badge least-concern">{{ status }}</span>
+              {% elif status == "Data Deficient" %}
+                <span class="status-badge data-deficient">{{ status }}</span>
+              {% else %}
+                <span class="status-badge unknown">{{ status or "Unknown" }}</span>
+              {% endif %}
+            {% else %}
+              <span class="status-badge unknown">{{ result.conservation_status or "Unknown" }}</span>
+            {% endif %}
           </div>
         </div>
 
@@ -61,13 +78,11 @@
 
           <div class="species-info-section">
             <div class="info-item">
-              <div class="info-icon">
-                <i class="fas fa-globe"></i>
+              <div class="info-label">
+                <i class="fas fa-globe info-icon-inline"></i>
+                Origin
               </div>
-              <div class="info-content">
-                <div class="info-label">Origin</div>
-                <div class="info-value">Tropical and subtropical oceans worldwide</div>
-              </div>
+              <div class="info-value">Tropical and subtropical oceans worldwide</div>
             </div>
 
             <div class="info-item">
@@ -105,18 +120,33 @@
             <h3 class="card-title">Conservation Information</h3>
           </div>
           <div class="card-content">
+            {% if conservation_info %}
             <div class="conservation-detail">
               <div class="detail-label">Population:</div>
-              <div class="detail-value">Approximately 85,000-90,000 nesting females worldwide</div>
+              <div class="detail-value">{{ conservation_info.population }}</div>
+            </div>
+            <div class="conservation-detail">
+              <div class="detail-label">Population Trend:</div>
+              <div class="detail-value">{{ conservation_info.trend }}</div>
             </div>
             <div class="conservation-detail">
               <div class="detail-label">Main Threats:</div>
-              <div class="detail-value">Climate change affecting nesting beaches, ocean pollution, fishing nets, and illegal harvesting</div>
+              <div class="detail-value">{{ conservation_info.threats }}</div>
             </div>
             <div class="conservation-detail">
               <div class="detail-label">How You Can Help:</div>
-              <div class="detail-value">Reduce plastic use, support beach conservation, avoid disturbing nesting sites, and choose sustainable seafood</div>
+              <div class="detail-value">Reduce plastic use, support habitat conservation, avoid disturbing wildlife, and choose sustainable products</div>
             </div>
+            {% else %}
+            <div class="conservation-detail">
+              <div class="detail-label">Status:</div>
+              <div class="detail-value">{{ result.conservation_status or "Unknown" }}</div>
+            </div>
+            <div class="conservation-detail">
+              <div class="detail-label">Note:</div>
+              <div class="detail-value">Detailed conservation information is not available for this species. Consider supporting general wildlife conservation efforts.</div>
+            </div>
+            {% endif %}
           </div>
         </div>
 
@@ -154,13 +184,9 @@
 
       <!-- Action Buttons -->
       <div class="action-buttons">
-        <a href="/" class="action-btn primary-btn">
+        <a href="/discovery" class="action-btn primary-btn">
           <i class="fas fa-search"></i>
           <span>Identify Another Animal</span>
-        </a>
-        <a href="/discovery" class="action-btn secondary-btn">
-          <i class="fas fa-upload"></i>
-          <span>Upload New Image</span>
         </a>
       </div>
 
@@ -173,7 +199,7 @@
           </div>
           <h2 class="no-animal-title">No Animal Detected</h2>
           <p class="no-animal-description">The AI analysis indicates this image does not contain an identifiable animal. Please try uploading a different image.</p>
-          <a href="/" class="action-btn primary-btn">
+          <a href="/discovery" class="action-btn primary-btn">
             <i class="fas fa-upload"></i>
             <span>Try Another Image</span>
           </a>
