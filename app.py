@@ -25,8 +25,9 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 
-# Configure secret key for sessions
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+# Configure secret key for sessions (secure default if not provided)
+# In production, always set the SECRET_KEY env var. The random fallback is for local/dev only.
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.urandom(32)
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
 app.config['SESSION_FILE_THRESHOLD'] = 100
@@ -352,7 +353,7 @@ def get_conservation_info(species_name, common_name, conservation_status):
             "status": "Least Concern",
             "population": "320,000,000 mature individuals",
             "trend": "Increasing",
-            "trend": "Stable"
+            "threats": "Habitat alteration, urbanization impacts"
         },
         
         # Reptiles
@@ -410,11 +411,29 @@ def get_conservation_info(species_name, common_name, conservation_status):
     species_key = species_name.lower().strip() if species_name else ""
     if species_key in conservation_data:
         return conservation_data[species_key]
-    
-    # Try to find by common name
-    for key, data in conservation_data.items():
-        if common_name and common_name.lower().strip() in data.get("name", "").lower():
-            return data
+
+    # Build a mapping of common names to entries where known
+    common_name_map = {
+        "african lion": conservation_data.get("panthera leo"),
+        "brown bear": conservation_data.get("ursus arctos"),
+        "asian elephant": conservation_data.get("elephas maximus"),
+        "gray wolf": conservation_data.get("canis lupus"),
+        "golden eagle": conservation_data.get("aquila chrysaetos"),
+        "emperor penguin": conservation_data.get("aptenodytes forsteri"),
+        "american robin": conservation_data.get("turdus migratorius"),
+        "green sea turtle": conservation_data.get("chelonia mydas"),
+        "nile crocodile": conservation_data.get("crocodylus niloticus"),
+        "american bullfrog": conservation_data.get("rana catesbeiana"),
+        "atlantic bluefin tuna": conservation_data.get("thunnus thynnus"),
+        "great white shark": conservation_data.get("carcharodon carcharias"),
+        "western honey bee": conservation_data.get("apis mellifera"),
+        "monarch butterfly": conservation_data.get("danaus plexippus"),
+    }
+
+    if common_name:
+        lookup = common_name_map.get(common_name.lower().strip())
+        if lookup:
+            return lookup
     
     # Return default based on AI-provided conservation status
     default_data = {
@@ -878,4 +897,6 @@ if __name__ == '__main__':
     print("   Press Ctrl+C to stop the server")
     print()
     
-    app.run(debug=True, host='0.0.0.0', port=port)
+    # Never enable debug by default; allow opt-in via FLASK_DEBUG
+    debug_flag = os.getenv('FLASK_DEBUG', '').lower() in ('1', 'true', 'yes', 'on')
+    app.run(debug=debug_flag, host='0.0.0.0', port=port)
