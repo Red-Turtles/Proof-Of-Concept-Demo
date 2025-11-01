@@ -48,14 +48,20 @@ class SecurityManager:
     
     def _get_client_ip(self):
         """Get client IP address, considering proxy headers"""
-        # Check for forwarded headers (proxies, load balancers, etc.)
-        forwarded_for = request.headers.get('X-Forwarded-For')
-        if forwarded_for:
-            return forwarded_for.split(',')[0].strip()
-        
-        real_ip = request.headers.get('X-Real-IP')
-        if real_ip:
-            return real_ip
-        
-        # Fallback to remote address
+        # Only trust proxy headers if explicitly enabled
+        trust_proxy = False
+        if self.app is not None:
+            trust_proxy = bool(self.app.config.get('TRUST_PROXY_HEADERS', False))
+
+        if trust_proxy:
+            # Check for forwarded headers (proxies, load balancers, etc.)
+            forwarded_for = request.headers.get('X-Forwarded-For')
+            if forwarded_for:
+                return forwarded_for.split(',')[0].strip()
+
+            real_ip = request.headers.get('X-Real-IP')
+            if real_ip:
+                return real_ip
+
+        # Fallback to remote address when not trusting proxy headers or unavailable
         return request.remote_addr
