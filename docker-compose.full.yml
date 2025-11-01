@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: wildid-db
+    environment:
+      POSTGRES_DB: wildid
+      POSTGRES_USER: wildid_user
+      POSTGRES_PASSWORD: wildid_password_change_in_production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wildid_user -d wildid"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - wildid-network
+
+  # Mailhog for email testing (development)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: wildid-mailhog
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    networks:
+      - wildid-network
+    restart: unless-stopped
+
+  # WildID Application
+  app:
+    build: .
+    container_name: wildid-app
+    ports:
+      - "3001:3000"  # Changed to 3001 externally, 3000 internally
+    environment:
+      # Flask Config
+      - PORT=3000
+      - FLASK_ENV=development
+      - FLASK_DEBUG=True
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      
+      # API Keys
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      
+      # Database
+      - DATABASE_URL=postgresql://wildid_user:wildid_password_change_in_production@db:5432/wildid
+      
+      # Email (using Mailhog)
+      - MAIL_SERVER=mailhog
+      - MAIL_PORT=1025
+      - MAIL_USE_TLS=False
+      - MAIL_USE_SSL=False
+      - MAIL_DEFAULT_SENDER=noreply@wildid.app
+      
+      # Upload Config
+      - UPLOAD_FOLDER=uploads
+      - MAX_CONTENT_LENGTH=16777216
+    volumes:
+      - .:/app
+      - ./uploads:/app/uploads
+      - flask_session:/app/flask_session
+    depends_on:
+      db:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    networks:
+      - wildid-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:3000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+  flask_session:
+    driver: local
+
+networks:
+  wildid-network:
+    driver: bridge
+

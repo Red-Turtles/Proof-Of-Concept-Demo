@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My History - WildID</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    .history-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    
+    .history-header {
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .history-header h1 {
+      font-size: 32px;
+      color: #2c3e50;
+      margin-bottom: 8px;
+    }
+    
+    .history-header p {
+      color: #7f8c8d;
+      font-size: 16px;
+    }
+    
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+      margin-top: 32px;
+    }
+    
+    .history-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .history-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .history-image {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      background: #f5f5f5;
+    }
+    
+    .history-content {
+      padding: 20px;
+    }
+    
+    .history-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 8px;
+    }
+    
+    .history-scientific {
+      font-size: 14px;
+      color: #7f8c8d;
+      font-style: italic;
+      margin-bottom: 12px;
+    }
+    
+    .history-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    
+    .meta-badge {
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .meta-badge.type {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    
+    .meta-badge.confidence {
+      background: #f3e5f5;
+      color: #7b1fa2;
+    }
+    
+    .meta-badge.status {
+      background: #fff3e0;
+      color: #e65100;
+    }
+    
+    .meta-badge.status.endangered {
+      background: #ffebee;
+      color: #c62828;
+    }
+    
+    .meta-badge.status.vulnerable {
+      background: #fff3e0;
+      color: #e65100;
+    }
+    
+    .meta-badge.status.least-concern {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    
+    .history-date {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e0e0e0;
+      font-size: 13px;
+      color: #95a5a6;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+    }
+    
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.3;
+    }
+    
+    .empty-state h2 {
+      font-size: 24px;
+      color: #2c3e50;
+      margin-bottom: 12px;
+    }
+    
+    .empty-state p {
+      color: #7f8c8d;
+      font-size: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .empty-state-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background: #4CAF50;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    
+    .empty-state-btn:hover {
+      background: #45a049;
+    }
+    
+    .flash-messages {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+    
+    .flash-message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .flash-message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .flash-message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .flash-message.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header Navigation -->
+  <nav class="header-nav">
+    <div class="nav-container">
+      <div class="logo">
+        <a href="/" style="text-decoration: none; color: inherit; display: flex; align-items: center;">
+          <span class="logo-icon">🍃</span>
+          <span class="logo-text">WildID</span>
+        </a>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/discovery" class="nav-link">Discovery</a>
+        <a href="/history" class="nav-link active">History</a>
+        {% if current_user %}
+          <a href="/auth/logout" class="nav-link">Sign Out</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+          <div class="flash-message {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- History Container -->
+  <div class="history-container">
+    <div class="history-header">
+      <h1>My Identification History</h1>
+      <p>All your wildlife discoveries in one place</p>
+    </div>
+
+    {% if identifications %}
+      <div class="history-grid">
+        {% for identification in identifications %}
+          <div class="history-card">
+            {% if identification.image_data %}
+              <img 
+                src="data:{{ identification.image_mime }};base64,{{ identification.image_data }}" 
+                alt="{{ identification.common_name or identification.species }}"
+                class="history-image"
+              />
+            {% else %}
+              <div class="history-image" style="display: flex; align-items: center; justify-content: center; background: #f0f0f0;">
+                <i class="fas fa-image" style="font-size: 48px; color: #ccc;"></i>
+              </div>
+            {% endif %}
+            
+            <div class="history-content">
+              <h3 class="history-title">
+                {{ identification.common_name or identification.species or 'Unknown Animal' }}
+              </h3>
+              {% if identification.species and identification.species != identification.common_name %}
+                <div class="history-scientific">{{ identification.species }}</div>
+              {% endif %}
+              
+              <div class="history-meta">
+                {% if identification.animal_type %}
+                  <span class="meta-badge type">{{ identification.animal_type|capitalize }}</span>
+                {% endif %}
+                
+                {% if identification.confidence %}
+                  <span class="meta-badge confidence">{{ identification.confidence|capitalize }} confidence</span>
+                {% endif %}
+                
+                {% if identification.conservation_status %}
+                  {% set status = identification.conservation_status.lower() %}
+                  <span class="meta-badge status 
+                    {% if 'endangered' in status %}endangered
+                    {% elif 'vulnerable' in status %}vulnerable
+                    {% elif 'least concern' in status %}least-concern
+                    {% endif %}">
+                    {{ identification.conservation_status }}
+                  </span>
+                {% endif %}
+              </div>
+              
+              <div class="history-date">
+                <i class="fas fa-clock"></i>
+                {{ identification.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <h2>No Identifications Yet</h2>
+        <p>Start discovering wildlife by uploading your first image!</p>
+        <a href="/discovery" class="empty-state-btn">
+          <i class="fas fa-upload"></i> Identify an Animal
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <p>WildID • Wildlife Identification • Auto file cleanup • Interactive habitat mapping</p>
+    </div>
+  </footer>
+</body>
+</html>
+

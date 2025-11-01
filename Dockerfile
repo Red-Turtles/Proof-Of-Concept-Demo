@@ -13,6 +13,8 @@ ENV FLASK_DEBUG=False
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
+    curl \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -24,8 +26,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create uploads directory
-RUN mkdir -p uploads
+# Create necessary directories
+RUN mkdir -p uploads flask_session
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app && \

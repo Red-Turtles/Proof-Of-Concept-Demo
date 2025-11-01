@@ -11,13 +11,15 @@ import uuid
 import tempfile
 import logging
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, session, redirect
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash
 from flask_cors import CORS
 from flask_session import Session
 from PIL import Image
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from security import SecurityManager
+from models import db, User, Identification
+from auth import AuthManager, mail
 
 # Load environment variables
 load_dotenv()
@@ -31,13 +33,33 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
 app.config['SESSION_FILE_THRESHOLD'] = 100
 
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///wildid.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Mail configuration
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'localhost')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 1025))  # Default to Mailhog port for development
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'False').lower() == 'true'
+app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@wildid.app')
+
 CORS(app)
 
-# Initialize session
+# Initialize extensions
 Session(app)
+db.init_app(app)
+mail.init_app(app)
 
-# Initialize security manager
+# Initialize managers
 security = SecurityManager(app)
+auth = AuthManager(app)
+
+# Create database tables
+with app.app_context():
+    db.create_all()
 
 # Security headers
 @app.after_request
@@ -225,23 +247,37 @@ def identify_turtle_species_together_ai(image_path):
                     "content": [
                         {
                             "type": "text",
-                            "text": """Please identify the animal species in this image. 
-                            Provide the scientific name, common name, animal type (mammal, bird, reptile, amphibian, fish, invertebrate), conservation status, and a brief description of key identifying features. 
-                            If this is not an animal or if you cannot clearly identify the species, please state that clearly.
-                            
-                            IMPORTANT: Format your response as valid JSON with the following exact structure:
-                            {
-                                "is_animal": true/false,
-                                "species": "scientific name or Unknown",
-                                "common_name": "common name or Unknown",
-                                "animal_type": "mammal/bird/reptile/amphibian/fish/invertebrate/unknown",
-                                "conservation_status": "Least Concern/Near Threatened/Vulnerable/Endangered/Critically Endangered/Data Deficient/Unknown",
-                                "confidence": "high/medium/low",
-                                "description": "key identifying features",
-                                "notes": "any additional notes"
-                            }
-                            
-                            Make sure to use double quotes and valid JSON syntax."""
+                            "text": """Carefully analyze this image to identify the animal species.
+
+INSTRUCTIONS:
+1. Look carefully at the ENTIRE image, including partially visible animals or animals in the background
+2. If you see ANY animal (mammal, bird, reptile, fish, insect, etc.), set "is_animal" to true
+3. Be generous in your interpretation - if it might be an animal, identify it
+4. Consider image quality, lighting, and angle in your confidence assessment
+5. If unsure about exact species, provide your best educated guess with appropriate confidence level
+6. Only set "is_animal" to false if you are CERTAIN there is NO animal visible
+
+For animal identification, provide:
+- Scientific name (or "Unknown" if cannot determine)
+- Common name (or general type like "Unidentified Bird" if species unknown)
+- Animal type: mammal, bird, reptile, amphibian, fish, or invertebrate
+- Conservation status (estimate if not certain)
+- Key identifying features you can see
+- Your confidence level: high (certain), medium (likely), or low (uncertain)
+
+IMPORTANT: Format your response as valid JSON with this exact structure:
+{
+    "is_animal": true/false,
+    "species": "scientific name or Unknown",
+    "common_name": "common name or general description",
+    "animal_type": "mammal/bird/reptile/amphibian/fish/invertebrate/unknown",
+    "conservation_status": "Least Concern/Near Threatened/Vulnerable/Endangered/Critically Endangered/Data Deficient/Unknown",
+    "confidence": "high/medium/low",
+    "description": "key identifying features and reasoning",
+    "notes": "image quality notes, partial visibility, or other relevant observations"
+}
+
+Use double quotes and valid JSON syntax. If you see an animal but cannot identify species, still provide a general identification."""
                         },
                         {
                             "type": "image_url",
@@ -252,8 +288,8 @@ def identify_turtle_species_together_ai(image_path):
                     ]
                 }
             ],
-            "max_tokens": 500,
-            "temperature": 0.1
+            "max_tokens": 600,
+            "temperature": 0.2
         }
         
         response = requests.post("https://api.together.xyz/v1/chat/completions", 
@@ -441,6 +477,159 @@ def get_conservation_info(species_name, common_name, conservation_status):
     
     return default_data
 
+def get_species_fun_facts(species_name, common_name, animal_type):
+    """Get species-specific fun facts and additional information"""
+    fun_facts_db = {
+        # Mammals
+        "panthera leo": {
+            "fun_fact": "Lions are the only big cats that live in groups called prides! A pride can have up to 40 lions, but typically consists of 10-15 members including several females, their cubs, and 1-3 males.",
+            "origin": "African savannas and grasslands, with a small population in India's Gir Forest"
+        },
+        "ursus arctos": {
+            "fun_fact": "Brown bears can run up to 35 mph (56 km/h) for short distances, faster than most humans! They can also stand on their hind legs to get a better view or to appear larger when threatened.",
+            "origin": "Northern forests, mountains, and tundra across North America, Europe, and Asia"
+        },
+        "elephas maximus": {
+            "fun_fact": "Asian elephants have an incredible memory and can remember the locations of water sources and feeding grounds for decades! They also use their trunks like a hand with over 40,000 muscles.",
+            "origin": "Tropical forests and grasslands of Southeast Asia and India"
+        },
+        "canis lupus": {
+            "fun_fact": "Wolves have a complex communication system using howls, barks, growls, and body language. Their howls can be heard up to 10 miles away and help coordinate pack activities!",
+            "origin": "Forests, tundra, grasslands, and mountains across North America and Eurasia"
+        },
+        
+        # Birds
+        "aquila chrysaetos": {
+            "fun_fact": "Golden eagles have incredible eyesight - they can spot a rabbit from 2 miles away! They can also dive at speeds of over 150 mph when hunting, making them one of the fastest birds on Earth.",
+            "origin": "Mountainous regions and open landscapes across the Northern Hemisphere"
+        },
+        "aptenodytes forsteri": {
+            "fun_fact": "Emperor penguins can dive deeper than any other bird - up to 1,850 feet (565 meters) deep! They can also hold their breath for up to 22 minutes underwater while hunting for fish.",
+            "origin": "Antarctica - the only continent where they breed and live year-round"
+        },
+        "turdus migratorius": {
+            "fun_fact": "American robins can eat up to 14 feet of earthworms per day! They're also one of the first birds to sing in the morning, often starting before sunrise during breeding season.",
+            "origin": "Throughout North America, from Alaska to Mexico"
+        },
+        
+        # Reptiles
+        "chelonia mydas": {
+            "fun_fact": "Green sea turtles can hold their breath for up to 5 hours underwater! They also return to the exact beach where they were born to lay their own eggs, sometimes traveling thousands of miles.",
+            "origin": "Tropical and subtropical oceans worldwide"
+        },
+        "crocodylus niloticus": {
+            "fun_fact": "Nile crocodiles can live for over 100 years and have the strongest bite force of any living animal - up to 5,000 pounds per square inch! They can also go months without eating.",
+            "origin": "Freshwater rivers, lakes, and marshes across Africa"
+        },
+        
+        # Amphibians
+        "rana catesbeiana": {
+            "fun_fact": "American bullfrogs can jump up to 10 times their body length! They're also voracious eaters and will consume almost anything that fits in their mouth, including other frogs, snakes, and small birds.",
+            "origin": "Ponds, lakes, and slow-moving streams in eastern North America"
+        },
+        
+        # Fish
+        "thunnus thynnus": {
+            "fun_fact": "Atlantic bluefin tuna can swim at speeds of up to 43 mph (70 km/h) and maintain body temperatures warmer than the surrounding water, making them warm-blooded fish!",
+            "origin": "Temperate and tropical waters of the Atlantic Ocean and Mediterranean Sea"
+        },
+        "carcharodon carcharias": {
+            "fun_fact": "Great white sharks can detect a single drop of blood in 25 gallons of water! They also have up to 300 teeth arranged in rows, with new teeth constantly replacing old ones throughout their lifetime.",
+            "origin": "Coastal and offshore waters of all major oceans"
+        },
+        
+        # Invertebrates
+        "apis mellifera": {
+            "fun_fact": "Honey bees perform a 'waggle dance' to communicate the location of food sources to other bees! A single bee produces only about 1/12 teaspoon of honey in its lifetime.",
+            "origin": "Originally from Europe, Africa, and Asia; now found worldwide"
+        },
+        "danaus plexippus": {
+            "fun_fact": "Monarch butterflies migrate up to 3,000 miles from North America to Mexico for winter! It takes 3-4 generations of monarchs to complete the full migration cycle.",
+            "origin": "North America, with migratory populations traveling between Canada and Mexico"
+        }
+    }
+    
+    # Try to find by scientific name first
+    species_key = species_name.lower().strip() if species_name else ""
+    if species_key in fun_facts_db:
+        return fun_facts_db[species_key]
+    
+    # Try to find by common name
+    for key, data in fun_facts_db.items():
+        if common_name and common_name.lower().strip() in data.get("name", "").lower():
+            return data
+    
+    # Return default based on animal type
+    default_facts = {
+        "fun_fact": "This species has unique characteristics and behaviors that make it fascinating to study. Each animal plays an important role in its ecosystem.",
+        "origin": f"Native habitats vary by region for this {animal_type or 'animal'} species"
+    }
+    
+    # Customize based on animal type
+    if animal_type:
+        if animal_type.lower() == "mammal":
+            default_facts["fun_fact"] = "Mammals are warm-blooded animals with fur or hair that feed their young with milk. They have complex social behaviors and advanced intelligence."
+        elif animal_type.lower() == "bird":
+            default_facts["fun_fact"] = "Birds are the only animals with feathers and can fly (with some exceptions). They have excellent vision and complex migration patterns."
+        elif animal_type.lower() == "reptile":
+            default_facts["fun_fact"] = "Reptiles are cold-blooded animals with scales or bony plates. They have been on Earth for over 300 million years!"
+        elif animal_type.lower() == "amphibian":
+            default_facts["fun_fact"] = "Amphibians can live both in water and on land. They have permeable skin that can absorb water and oxygen."
+        elif animal_type.lower() == "fish":
+            default_facts["fun_fact"] = "Fish have been swimming in Earth's waters for over 500 million years. They come in amazing shapes, sizes, and colors!"
+        elif animal_type.lower() == "invertebrate":
+            default_facts["fun_fact"] = "Invertebrates make up 97% of all animal species on Earth! They have no backbone but incredible diversity and adaptations."
+    
+    return default_facts
+
+def get_species_help_tips(species_name, common_name, animal_type, conservation_status):
+    """Get species-specific conservation help tips"""
+    help_tips_db = {
+        # Endangered species
+        "chelonia mydas": "Reduce plastic use (especially single-use items), support beach conservation programs, avoid disturbing nesting sites, and choose sustainable seafood to protect sea turtle habitats.",
+        "elephas maximus": "Support elephant conservation organizations, avoid products containing palm oil from unsustainable sources, and promote wildlife-friendly tourism that doesn't exploit elephants.",
+        "danaus plexippus": "Plant native milkweed and nectar plants in your garden, avoid using pesticides, and support monarch butterfly conservation initiatives and habitat restoration projects.",
+        "thunnus thynnus": "Choose sustainably caught fish, support marine protected areas, and reduce your carbon footprint to help combat climate change affecting ocean ecosystems.",
+        
+        # Vulnerable species
+        "panthera leo": "Support wildlife conservation organizations, promote coexistence between humans and lions, and advocate for habitat protection in lion territories.",
+        "carcharodon carcharias": "Support shark conservation research, choose sustainable seafood, and educate others about the importance of sharks in marine ecosystems.",
+        
+        # General tips based on animal type
+        "mammal": "Support habitat conservation, reduce your carbon footprint, and choose products from companies committed to wildlife protection.",
+        "bird": "Keep cats indoors, use bird-friendly windows, plant native vegetation, and support bird conservation organizations.",
+        "reptile": "Support habitat protection, avoid collecting wild reptiles, and educate others about reptile conservation needs.",
+        "amphibian": "Protect wetlands, avoid using pesticides, and support amphibian conservation research and habitat restoration.",
+        "fish": "Choose sustainable seafood, reduce plastic pollution, and support marine protected areas and clean water initiatives.",
+        "invertebrate": "Plant pollinator-friendly gardens, avoid pesticides, and support research into invertebrate conservation and ecosystem health."
+    }
+    
+    # Try to find species-specific tips first
+    species_key = species_name.lower().strip() if species_name else ""
+    if species_key in help_tips_db:
+        return help_tips_db[species_key]
+    
+    # Try to find by common name
+    for key, tip in help_tips_db.items():
+        if common_name and common_name.lower().strip() in key.lower():
+            return tip
+    
+    # Return general tips based on animal type
+    if animal_type and animal_type.lower() in help_tips_db:
+        return help_tips_db[animal_type.lower()]
+    
+    # Return conservation status-based tips
+    if conservation_status:
+        if "endangered" in conservation_status.lower():
+            return "Support conservation organizations, reduce your environmental impact, and advocate for stronger wildlife protection laws."
+        elif "vulnerable" in conservation_status.lower():
+            return "Support habitat conservation, choose sustainable products, and promote awareness about wildlife protection."
+        elif "least concern" in conservation_status.lower():
+            return "Continue supporting general wildlife conservation efforts and habitat protection to maintain healthy populations."
+    
+    # Default general tip
+    return "Support wildlife conservation organizations, reduce your environmental impact, and educate others about the importance of protecting all species and their habitats."
+
 def get_animal_habitat_data(species_name, common_name, animal_type):
     """Get habitat and distribution data for any animal species"""
     # Comprehensive database of animals and their habitats
@@ -621,86 +810,155 @@ def get_animal_habitat_data(species_name, common_name, animal_type):
 @app.route('/')
 def index():
     """Serve the main page"""
-    security_status = security.get_security_status()
-    
-    # Generate CAPTCHA if rate limited
-    captcha_data = None
-    if security_status.get('rate_limited') and not security_status.get('is_trusted'):
-        captcha_data = security.generate_captcha()
-    
-    return render_template('index.html', 
-                         security_status=security_status,
-                         captcha_data=captcha_data)
+    current_user = auth.get_current_user()
+    return render_template('index.html', current_user=current_user)
 
 @app.route('/discovery')
 def discovery():
     """Serve the discovery page"""
-    security_status = security.get_security_status()
-    
-    # Generate CAPTCHA if rate limited
-    captcha_data = None
-    if security_status.get('rate_limited') and not security_status.get('is_trusted'):
-        captcha_data = security.generate_captcha()
-    
-    return render_template('discovery.html', 
-                         security_status=security_status,
-                         captcha_data=captcha_data)
+    current_user = auth.get_current_user()
+    return render_template('discovery.html', current_user=current_user)
 
-@app.route('/verify-captcha', methods=['POST'])
-def verify_captcha():
-    """Handle CAPTCHA verification"""
-    captcha_id = request.form.get('captcha_id')
-    captcha_answer = request.form.get('captcha_answer')
+# Authentication routes
+@app.route('/auth/login', methods=['GET', 'POST'])
+def login():
+    """Handle login page and magic link sending"""
+    if request.method == 'GET':
+        # Check if already logged in
+        if auth.is_authenticated():
+            return redirect(url_for('index'))
+        
+        return render_template('login.html')
     
-    if not captcha_id or not captcha_answer:
-        return render_template('index.html', 
-                             security_status=security.get_security_status(),
-                             error_message='Please enter a CAPTCHA answer')
+    # POST - send magic link
+    email = request.form.get('email', '').strip().lower()
     
-    if security.verify_captcha(captcha_id, captcha_answer):
-        # CAPTCHA verified successfully, redirect to main page
-        return redirect('/')
-    else:
-        # CAPTCHA failed, generate new one
-        captcha_data = security.generate_captcha()
-        return render_template('index.html', 
-                             security_status=security.get_security_status(),
-                             captcha_data=captcha_data,
-                             error_message='CAPTCHA verification failed. Please try again.')
+    if not email:
+        flash('Please enter your email address', 'error')
+        return render_template('login.html')
+    
+    # Basic email validation
+    if '@' not in email or '.' not in email.split('@')[1]:
+        flash('Please enter a valid email address', 'error')
+        return render_template('login.html')
+    
+    try:
+        # Generate and send magic link
+        token = auth.generate_magic_link_token(email)
+        request_host = request.host
+        
+        if auth.send_magic_link(email, token, request_host):
+            flash('Check your email! We sent you a magic link to sign in.', 'success')
+        else:
+            flash('There was an issue sending the email. Please try again.', 'error')
+    except Exception as e:
+        logger.error(f"Error sending magic link: {str(e)}")
+        flash('An error occurred. Please try again.', 'error')
+    
+    return render_template('login.html', email_sent=True)
 
-@app.route('/test-captcha')
-def test_captcha():
-    """Serve CAPTCHA test page"""
-    return app.send_static_file('test_captcha.html')
+@app.route('/auth/register', methods=['GET', 'POST'])
+def register():
+    """Handle registration - same as login for passwordless"""
+    # For passwordless auth, registration is the same as login
+    return login()
+
+@app.route('/auth/verify')
+def verify_magic_link():
+    """Verify magic link token and log user in"""
+    token = request.args.get('token')
+    
+    if not token:
+        flash('Invalid magic link', 'error')
+        return redirect(url_for('login'))
+    
+    # Verify token
+    email = auth.verify_magic_link_token(token)
+    
+    if not email:
+        flash('This magic link has expired or is invalid. Please request a new one.', 'error')
+        return redirect(url_for('login'))
+    
+    # Create or get user
+    user = auth.create_or_get_user(email)
+    
+    # Log user in
+    auth.login_user(user)
+    
+    flash(f'Welcome back, {email}!', 'success')
+    return redirect(url_for('index'))
+
+@app.route('/auth/logout')
+def logout():
+    """Log out the current user"""
+    auth.logout_user()
+    flash('You have been logged out successfully', 'success')
+    return redirect(url_for('index'))
+
+@app.route('/history')
+def history():
+    """Show user's identification history"""
+    current_user = auth.get_current_user()
+    
+    if not current_user:
+        flash('Please sign in to view your history', 'info')
+        return redirect(url_for('login'))
+    
+    # Get user's identifications, ordered by most recent
+    identifications = Identification.query.filter_by(user_id=current_user.id)\
+        .order_by(Identification.created_at.desc())\
+        .all()
+    
+    return render_template('history.html', 
+                         current_user=current_user, 
+                         identifications=identifications)
+
+@app.route('/api/feedback', methods=['POST'])
+def submit_feedback():
+    """Submit feedback on an identification"""
+    try:
+        data = request.get_json()
+        identification_id = data.get('identification_id')
+        feedback = data.get('feedback')  # 'correct' or 'incorrect'
+        comment = data.get('comment', '')
+        
+        if not identification_id or feedback not in ['correct', 'incorrect']:
+            return jsonify({'success': False, 'error': 'Invalid feedback data'}), 400
+        
+        # Get the identification
+        identification = Identification.query.get(identification_id)
+        if not identification:
+            return jsonify({'success': False, 'error': 'Identification not found'}), 404
+        
+        # Verify user owns this identification
+        current_user = auth.get_current_user()
+        if current_user and identification.user_id != current_user.id:
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Update feedback
+        identification.user_feedback = feedback
+        identification.feedback_comment = comment
+        identification.feedback_at = datetime.utcnow()
+        db.session.commit()
+        
+        logger.info(f"Feedback received: {feedback} for identification {identification_id}")
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Thank you for your feedback!'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error submitting feedback: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to submit feedback'}), 500
 
 @app.route('/identify', methods=['POST'])
 def upload_file():
     """Handle file upload and species identification"""
     temp_file_path = None
+    current_user = auth.get_current_user()
+    
     try:
-        # Check security requirements
-        requires_captcha = False
-        
-        # Check if browser is trusted
-        if not security.is_browser_trusted():
-            # Check rate limiting
-            if security.check_rate_limit():
-                requires_captcha = True
-                logger.info("Rate limit exceeded, CAPTCHA required")
-        
-        # Check if CAPTCHA is required (should be verified separately now)
-        if requires_captcha:
-            logger.warning("CAPTCHA required but not verified")
-            # Return to the main page with CAPTCHA required message
-            captcha_data = security.generate_captcha()
-            return render_template('index.html', 
-                                 security_status=security.get_security_status(),
-                                 captcha_data=captcha_data,
-                                 error_message='Security verification required. Please solve the CAPTCHA below.')
-        
-        # Record the request for rate limiting
-        security.record_request()
-        
         # Check if file is present
         if 'file' not in request.files:
             logger.warning("Upload attempt without file")
@@ -762,18 +1020,63 @@ def upload_file():
         
         # Get conservation information
         conservation_info = None
+        fun_facts_info = None
+        help_tips = None
+        
         if result.get('is_animal') and not result.get('error'):
             conservation_info = get_conservation_info(
                 result.get('species', ''),
                 result.get('common_name', ''),
                 result.get('conservation_status', '')
             )
+            
+            fun_facts_info = get_species_fun_facts(
+                result.get('species', ''),
+                result.get('common_name', ''),
+                result.get('animal_type', '')
+            )
+            
+            help_tips = get_species_help_tips(
+                result.get('species', ''),
+                result.get('common_name', ''),
+                result.get('animal_type', ''),
+                result.get('conservation_status', '')
+            )
+        
+        # Save to history if user is logged in
+        identification_id = None
+        if current_user and result.get('is_animal') and not result.get('error'):
+            try:
+                identification = Identification(
+                    user_id=current_user.id,
+                    species=result.get('species'),
+                    common_name=result.get('common_name'),
+                    animal_type=result.get('animal_type'),
+                    conservation_status=result.get('conservation_status'),
+                    confidence=result.get('confidence'),
+                    description=result.get('description'),
+                    notes=result.get('notes'),
+                    image_data=image_data,
+                    image_mime=image_mime,
+                    result_json=json.dumps(result)
+                )
+                db.session.add(identification)
+                db.session.commit()
+                identification_id = identification.id
+                logger.info(f"Saved identification to history for user {current_user.email}")
+            except Exception as e:
+                logger.error(f"Error saving identification to history: {str(e)}")
+                # Don't fail the request if history save fails
         
         return render_template('results.html', 
                              result=result, 
                              image_data=image_data, 
                              image_mime=image_mime,
-                             conservation_info=conservation_info)
+                             conservation_info=conservation_info,
+                             fun_facts_info=fun_facts_info,
+                             help_tips=help_tips,
+                             current_user=current_user,
+                             identification_id=identification_id)
         
     except Exception as e:
         # Log the actual error internally
@@ -837,32 +1140,6 @@ def test_coordinates():
 def test_map():
     """Test map page for debugging coordinates"""
     return render_template('test-map.html')
-
-@app.route('/api/security/status')
-def security_status():
-    """Get current security status"""
-    return jsonify(security.get_security_status())
-
-@app.route('/api/security/captcha', methods=['POST'])
-def generate_captcha_endpoint():
-    """Generate a new CAPTCHA challenge"""
-    captcha_data = security.generate_captcha()
-    return jsonify(captcha_data)
-
-@app.route('/api/security/verify', methods=['POST'])
-def verify_captcha_endpoint():
-    """Verify CAPTCHA answer"""
-    data = request.get_json()
-    captcha_id = data.get('captcha_id')
-    answer = data.get('answer')
-    
-    if not captcha_id or not answer:
-        return jsonify({'success': False, 'error': 'Missing captcha_id or answer'}), 400
-    
-    if security.verify_captcha(captcha_id, answer):
-        return jsonify({'success': True, 'message': 'CAPTCHA verified successfully'})
-    else:
-        return jsonify({'success': False, 'error': 'CAPTCHA verification failed'}), 400
 
 @app.route('/health')
 def health_check():

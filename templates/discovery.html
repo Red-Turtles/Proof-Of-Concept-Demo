@@ -17,8 +17,12 @@
       <div class="nav-links">
         <a href="/" class="nav-link">Home</a>
         <a href="/discovery" class="nav-link active">Discovery</a>
-        <a href="/identify" class="nav-link">Tell Us What You Saw</a>
-        <a href="/contact" class="nav-link">Contact</a>
+        {% if current_user %}
+          <a href="/history" class="nav-link">History</a>
+          <a href="/auth/logout" class="nav-link">Sign Out</a>
+        {% else %}
+          <a href="/auth/login" class="nav-link">Sign In</a>
+        {% endif %}
       </div>
     </div>
   </nav>
@@ -39,34 +43,12 @@
       <section class="discovery-card">
         <h2>Upload Animal Photo</h2>
         
-        <!-- Security Status -->
-        <div id="security-status" class="security-status" style="display: none;">
-          <div class="security-info">
-            <span class="security-icon">🔒</span>
-            <span id="security-message">Security verification required</span>
-          </div>
-        </div>
-        
-        <!-- CAPTCHA Section -->
-        {% if captcha_data %}
-        <div id="captcha-section" class="captcha-section" style="display: block;">
-          <h3>Security Verification</h3>
-          <p class="captcha-desc">Please solve the math problem to continue:</p>
-          {% if error_message %}
-          <div class="security-message error">{{ error_message }}</div>
-          {% endif %}
-          <form id="captcha-form" action="/verify-captcha" method="post">
-            <div class="captcha-container">
-              <div class="captcha-question">
-                {{ captcha_data.question }} = ?
-              </div>
-              <input type="hidden" name="captcha_id" value="{{ captcha_data.captcha_id }}" />
-              <input type="number" name="captcha_answer" placeholder="Your answer" required />
-              <button type="submit" class="captcha-submit-btn">Verify</button>
-              <a href="/discovery" class="refresh-btn">🔄</a>
-            </div>
-          </form>
-          <p class="captcha-note">After 2 image identifications, additional verification may be required.</p>
+        {% if not current_user %}
+        <div class="auth-notice" style="padding: 16px; background: #e3f2fd; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <p style="margin: 0; color: #1976d2;">
+            <strong>💡 Sign in to save your discoveries!</strong> 
+            <a href="/auth/login" style="color: #1565c0; text-decoration: underline;">Sign in here</a>
+          </p>
         </div>
         {% endif %}
         

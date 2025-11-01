@@ -17,8 +17,12 @@
       <div class="nav-links">
         <a href="/" class="nav-link active">Home</a>
         <a href="/discovery" class="nav-link">Discovery</a>
-        <a href="/discovery" class="nav-link">Tell Us What You Saw</a>
-        <a href="/contact" class="nav-link">Contact</a>
+        {% if current_user %}
+          <a href="/history" class="nav-link">History</a>
+          <a href="/auth/logout" class="nav-link">Sign Out ({{ current_user.email }})</a>
+        {% else %}
+          <a href="/auth/login" class="nav-link">Sign In</a>
+        {% endif %}
       </div>
     </div>
   </nav>

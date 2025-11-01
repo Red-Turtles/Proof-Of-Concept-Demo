@@ -19,8 +19,12 @@
       <div class="nav-links">
         <a href="/" class="nav-link">Home</a>
         <a href="/discovery" class="nav-link active">Discovery</a>
-        <a href="/discovery" class="nav-link">Tell Us What You Saw</a>
-        <a href="/contact" class="nav-link">Contact</a>
+        {% if current_user %}
+          <a href="/history" class="nav-link">History</a>
+          <a href="/auth/logout" class="nav-link">Sign Out</a>
+        {% else %}
+          <a href="/auth/login" class="nav-link">Sign In</a>
+        {% endif %}
       </div>
     </div>
   </nav>
@@ -82,7 +86,13 @@
                 <i class="fas fa-globe info-icon-inline"></i>
                 Origin
               </div>
-              <div class="info-value">Tropical and subtropical oceans worldwide</div>
+              <div class="info-value">
+                {% if fun_facts_info and fun_facts_info.origin %}
+                  {{ fun_facts_info.origin }}
+                {% else %}
+                  Native habitats vary by region for this species
+                {% endif %}
+              </div>
             </div>
 
             <div class="info-item">
@@ -95,6 +105,19 @@
                 {% endif %}
               </div>
             </div>
+            
+            {% if result.confidence and result.confidence.lower() in ['low', 'medium'] %}
+            <div class="confidence-warning">
+              <strong>⚠️ {{ result.confidence|capitalize }} Confidence Identification</strong>
+              <p style="margin: 8px 0 0 0; font-size: 14px;">
+                {% if result.confidence.lower() == 'low' %}
+                The AI is uncertain about this identification. Consider trying again with a clearer photo (better lighting, closer view, different angle) or consult an expert.
+                {% else %}
+                The AI is moderately confident but not certain. Consider taking additional photos from different angles for verification.
+                {% endif %}
+              </p>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -109,7 +132,13 @@
             <h3 class="card-title">Fun Fact</h3>
           </div>
           <div class="card-content">
-            <p>Green sea turtles can hold their breath for up to 5 hours underwater! They also return to the exact beach where they were born to lay their own eggs, sometimes traveling thousands of miles.</p>
+            <p>
+              {% if fun_facts_info and fun_facts_info.fun_fact %}
+                {{ fun_facts_info.fun_fact }}
+              {% else %}
+                This species has unique characteristics and behaviors that make it fascinating to study. Each animal plays an important role in its ecosystem.
+              {% endif %}
+            </p>
           </div>
         </div>
 
@@ -135,7 +164,13 @@
             </div>
             <div class="conservation-detail">
               <div class="detail-label">How You Can Help:</div>
-              <div class="detail-value">Reduce plastic use, support habitat conservation, avoid disturbing wildlife, and choose sustainable products</div>
+              <div class="detail-value">
+                {% if help_tips %}
+                  {{ help_tips }}
+                {% else %}
+                  Support wildlife conservation organizations, reduce your environmental impact, and educate others about the importance of protecting all species and their habitats.
+                {% endif %}
+              </div>
             </div>
             {% else %}
             <div class="conservation-detail">
@@ -182,12 +217,34 @@
 
       </div>
 
+      <!-- Accuracy Feedback (for logged in users) -->
+      {% if current_user and identification_id %}
+      <div class="feedback-section" id="feedback-section">
+        <h3 style="text-align: center; color: #2c3e50; margin-bottom: 16px;">Was this identification correct?</h3>
+        <div class="feedback-buttons" style="display: flex; gap: 12px; justify-content: center; margin-bottom: 20px;">
+          <button onclick="submitFeedback('correct')" class="feedback-btn correct-btn" id="correct-btn">
+            <i class="fas fa-check-circle"></i> Yes, Correct
+          </button>
+          <button onclick="submitFeedback('incorrect')" class="feedback-btn incorrect-btn" id="incorrect-btn">
+            <i class="fas fa-times-circle"></i> No, Incorrect
+          </button>
+        </div>
+        <div id="feedback-message" style="text-align: center; display: none; padding: 12px; border-radius: 8px; margin-top: 12px;"></div>
+      </div>
+      {% endif %}
+
       <!-- Action Buttons -->
       <div class="action-buttons">
         <a href="/discovery" class="action-btn primary-btn">
-          <i class="fas fa-search"></i>
-          <span>Identify Another Animal</span>
+          <i class="fas fa-redo"></i>
+          <span>Try Again / Identify Another</span>
         </a>
+        {% if current_user %}
+        <a href="/history" class="action-btn secondary-btn" style="background: #757575;">
+          <i class="fas fa-history"></i>
+          <span>View History</span>
+        </a>
+        {% endif %}
       </div>
 
       {% else %}
@@ -218,6 +275,153 @@
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <style>
+    .feedback-section {
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .feedback-btn {
+      padding: 12px 24px;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .feedback-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .feedback-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .correct-btn {
+      background: #4CAF50;
+      color: white;
+    }
+    
+    .correct-btn:hover:not(:disabled) {
+      background: #45a049;
+    }
+    
+    .incorrect-btn {
+      background: #f44336;
+      color: white;
+    }
+    
+    .incorrect-btn:hover:not(:disabled) {
+      background: #da190b;
+    }
+    
+    .feedback-message-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .feedback-message-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .secondary-btn {
+      background: #757575;
+      color: white;
+      border: none;
+    }
+    
+    .secondary-btn:hover {
+      background: #616161;
+    }
+    
+    .confidence-warning {
+      margin-top: 16px;
+      padding: 16px;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .confidence-warning strong {
+      color: #856404;
+    }
+  </style>
+  
+  <script>
+    // Store identification ID for feedback
+    const identificationId = {{ identification_id|tojson }};
+    
+    // Submit feedback
+    async function submitFeedback(feedback) {
+      if (!identificationId) {
+        alert('Unable to submit feedback. Please sign in and try again.');
+        return;
+      }
+      
+      const correctBtn = document.getElementById('correct-btn');
+      const incorrectBtn = document.getElementById('incorrect-btn');
+      const messageDiv = document.getElementById('feedback-message');
+      
+      // Disable buttons
+      correctBtn.disabled = true;
+      incorrectBtn.disabled = true;
+      
+      try {
+        const response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            identification_id: identificationId,
+            feedback: feedback
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          messageDiv.textContent = '✓ Thank you for your feedback! This helps us improve our AI.';
+          messageDiv.className = 'feedback-message-success';
+          messageDiv.style.display = 'block';
+          
+          // Hide buttons after successful feedback
+          setTimeout(() => {
+            document.getElementById('feedback-section').style.display = 'none';
+          }, 2000);
+        } else {
+          throw new Error(data.error || 'Failed to submit feedback');
+        }
+      } catch (error) {
+        console.error('Feedback error:', error);
+        messageDiv.textContent = '✗ Failed to submit feedback. Please try again.';
+        messageDiv.className = 'feedback-message-error';
+        messageDiv.style.display = 'block';
+        
+        // Re-enable buttons on error
+        correctBtn.disabled = false;
+        incorrectBtn.disabled = false;
+      }
+    }
+  </script>
+  
   <script>
     let embeddedMap;
     let embeddedMarkers = [];

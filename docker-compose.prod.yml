@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: wildid-db-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wildid}
+      POSTGRES_USER: ${POSTGRES_USER:-wildid_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wildid_user} -d ${POSTGRES_DB:-wildid}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    networks:
+      - wildid-network
+
+  # WildID Application
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: wildid-app-prod
+    ports:
+      - "3000:3000"
+    environment:
+      # Flask Config
+      - PORT=3000
+      - FLASK_ENV=production
+      - FLASK_DEBUG=False
+      - SECRET_KEY=${SECRET_KEY}
+      - SESSION_COOKIE_SECURE=true
+      
+      # API Keys
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-wildid_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-wildid}
+      
+      # Email (use real email service in production)
+      - MAIL_SERVER=${MAIL_SERVER}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USE_TLS=${MAIL_USE_TLS:-True}
+      - MAIL_USE_SSL=${MAIL_USE_SSL:-False}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_DEFAULT_SENDER=${MAIL_DEFAULT_SENDER}
+      
+      # Upload Config
+      - UPLOAD_FOLDER=uploads
+      - MAX_CONTENT_LENGTH=16777216
+    volumes:
+      - ./uploads:/app/uploads
+      - flask_session:/app/flask_session
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - wildid-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:3000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+  flask_session:
+    driver: local
+
+networks:
+  wildid-network:
+    driver: bridge
+

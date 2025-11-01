@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sign In - WildID</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <style>
+    .auth-container {
+      max-width: 480px;
+      margin: 80px auto;
+      padding: 40px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .auth-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    
+    .auth-header h1 {
+      font-size: 28px;
+      color: #2c3e50;
+      margin-bottom: 8px;
+    }
+    
+    .auth-header p {
+      color: #7f8c8d;
+      font-size: 16px;
+    }
+    
+    .auth-form {
+      margin-top: 24px;
+    }
+    
+    .form-group {
+      margin-bottom: 24px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #34495e;
+      font-weight: 500;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #4CAF50;
+    }
+    
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .submit-btn:hover {
+      background: #45a049;
+    }
+    
+    .auth-info {
+      margin-top: 24px;
+      padding: 16px;
+      background: #e8f5e9;
+      border-radius: 8px;
+      color: #2e7d32;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .auth-info.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    
+    .flash-messages {
+      margin-bottom: 24px;
+    }
+    
+    .flash-message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .flash-message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .flash-message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .flash-message.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    
+    .auth-footer {
+      margin-top: 24px;
+      text-align: center;
+      color: #7f8c8d;
+      font-size: 14px;
+    }
+    
+    .auth-footer a {
+      color: #4CAF50;
+      text-decoration: none;
+    }
+    
+    .auth-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header Navigation -->
+  <nav class="header-nav">
+    <div class="nav-container">
+      <div class="logo">
+        <a href="/" style="text-decoration: none; color: inherit; display: flex; align-items: center;">
+          <span class="logo-icon">🍃</span>
+          <span class="logo-text">WildID</span>
+        </a>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/discovery" class="nav-link">Discovery</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Auth Container -->
+  <div class="auth-container">
+    <div class="auth-header">
+      <h1>Sign In to WildID</h1>
+      <p>Enter your email to receive a magic link</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+            <div class="flash-message {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% if not email_sent %}
+    <!-- Login Form -->
+    <form class="auth-form" method="POST" action="/auth/login">
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email" 
+          placeholder="you@example.com"
+          required 
+          autocomplete="email"
+        />
+      </div>
+      
+      <button type="submit" class="submit-btn">
+        Send Magic Link
+      </button>
+    </form>
+
+    <div class="auth-info">
+      <strong>🔒 No passwords needed!</strong><br>
+      We'll send you a secure magic link to sign in. No need to remember passwords.
+    </div>
+    {% else %}
+    <!-- Email Sent Success -->
+    <div class="auth-info success">
+      <strong>✉️ Check your inbox!</strong><br>
+      We've sent you a magic link. Click the link in the email to sign in. 
+      The link will expire in 15 minutes.
+    </div>
+    {% endif %}
+
+    <div class="auth-footer">
+      <p>New to WildID? Registration happens automatically when you sign in.</p>
+      <p><a href="/">Back to Home</a></p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <p>WildID • Wildlife Identification • Auto file cleanup • Interactive habitat mapping</p>
+    </div>
+  </footer>
+</body>
+</html>
+
