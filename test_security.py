@@ -12,6 +12,18 @@ import sys
 def test_security_features():
     """Test the security features of the app"""
     base_url = "http://localhost:3000"
+    session = requests.Session()
+
+    def get_csrf_headers():
+        try:
+            response = session.get(f"{base_url}/api/security/status")
+            if response.status_code == 200:
+                token = response.json().get('csrf_token')
+                if token:
+                    return {'X-CSRF-Token': token}
+        except Exception as csrf_error:
+            print(f"❌ Failed to retrieve CSRF token: {csrf_error}")
+        return {}
     
     print("🔒 Testing Security Features")
     print("=" * 50)
@@ -19,7 +31,7 @@ def test_security_features():
     # Test 1: Get security status
     print("\n1. Testing security status endpoint...")
     try:
-        response = requests.get(f"{base_url}/api/security/status")
+        response = session.get(f"{base_url}/api/security/status")
         if response.status_code == 200:
             status = response.json()
             print(f"✅ Security status: {status}")
@@ -31,7 +43,8 @@ def test_security_features():
     # Test 2: Generate CAPTCHA
     print("\n2. Testing CAPTCHA generation...")
     try:
-        response = requests.post(f"{base_url}/api/security/captcha")
+        csrf_headers = get_csrf_headers()
+        response = session.post(f"{base_url}/api/security/captcha", headers=csrf_headers)
         if response.status_code == 200:
             captcha_data = response.json()
             print(f"✅ CAPTCHA generated: {captcha_data['question']}")
@@ -42,7 +55,7 @@ def test_security_features():
                 "captcha_id": captcha_data["captcha_id"],
                 "answer": "999"  # Wrong answer
             }
-            response = requests.post(f"{base_url}/api/security/verify", json=verify_data)
+            response = session.post(f"{base_url}/api/security/verify", json=verify_data, headers=get_csrf_headers())
             if response.status_code == 400:
                 result = response.json()
                 print(f"✅ CAPTCHA correctly rejected wrong answer: {result}")
@@ -69,7 +82,7 @@ def test_security_features():
                     return
                 
                 verify_data["answer"] = str(correct_answer)
-                response = requests.post(f"{base_url}/api/security/verify", json=verify_data)
+                response = session.post(f"{base_url}/api/security/verify", json=verify_data, headers=get_csrf_headers())
                 if response.status_code == 200:
                     result = response.json()
                     print(f"✅ CAPTCHA correctly accepted correct answer: {result}")
@@ -86,7 +99,7 @@ def test_security_features():
     # Test 5: Test main page loads
     print("\n5. Testing main page loads...")
     try:
-        response = requests.get(base_url)
+        response = session.get(base_url)
         if response.status_code == 200:
             print("✅ Main page loads successfully")
         else:

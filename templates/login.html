@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sign In - WildID</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <title>Sign In - WildID</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <style>
     .auth-container {
       max-width: 480px;
@@ -174,7 +175,8 @@
 
     {% if not email_sent %}
     <!-- Login Form -->
-    <form class="auth-form" method="POST" action="/auth/login">
+      <form class="auth-form" method="POST" action="/auth/login">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="form-group">
         <label for="email">Email Address</label>
         <input 

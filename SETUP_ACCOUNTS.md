@@ -173,7 +173,7 @@ Visit http://localhost:3000
 - `GET /auth/login` - Login page
 - `POST /auth/login` - Send magic link
 - `GET /auth/verify` - Verify magic link token
-- `GET /auth/logout` - Log out
+- `POST /auth/logout` - Log out
 - `GET /history` - User's identification history (requires auth)
 - `POST /identify` - Upload and identify animal
 - `GET /map` - Show habitat map

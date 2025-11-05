@@ -4,7 +4,9 @@ Handles passwordless email authentication with magic links
 """
 
 import secrets
+import hashlib
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 from flask import session, request
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
@@ -35,6 +37,37 @@ class AuthManager:
         
         logger.info("Auth manager initialized")
     
+    def _hash_token(self, token):
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def _build_magic_link(self, token):
+        base_url = self.app.config.get('MAGIC_LINK_BASE_URL')
+        preferred_scheme = self.app.config.get('PREFERRED_URL_SCHEME', 'https')
+
+        if base_url:
+            base_url = base_url.rstrip('/')
+        else:
+            server_name = self.app.config.get('SERVER_NAME')
+            if server_name:
+                base_url = f"{preferred_scheme}://{server_name.rstrip('/')}"
+            else:
+                host = request.host
+                allowed_hosts = self.app.config.get('ALLOWED_HOSTS', [])
+                if not host:
+                    raise ValueError('Unable to determine request host for magic link')
+
+                hostname = host.split(':')[0]
+                port = host.split(':')[1] if ':' in host else None
+
+                if allowed_hosts and hostname not in allowed_hosts:
+                    raise ValueError('Host header not allowed for magic link generation')
+
+                port_suffix = f":{port}" if port else ''
+                base_url = f"{preferred_scheme}://{hostname}{port_suffix}"
+
+        query = urlencode({'token': token})
+        return f"{base_url}/auth/verify?{query}"
+
     def generate_magic_link_token(self, email):
         """Generate a secure token for magic link"""
         # Generate a secure random token
@@ -46,7 +79,7 @@ class AuthManager:
         # Store token in database
         login_token = LoginToken(
             email=email.lower().strip(),
-            token=token,
+            token=self._hash_token(token),
             expires_at=expires_at
         )
         
@@ -58,7 +91,17 @@ class AuthManager:
     
     def verify_magic_link_token(self, token):
         """Verify a magic link token and return email if valid"""
-        login_token = LoginToken.query.filter_by(token=token).first()
+        token_hash = self._hash_token(token)
+        login_token = LoginToken.query.filter_by(token=token_hash).first()
+
+        # Backwards compatibility with previous plaintext tokens
+        if not login_token:
+            legacy_token = LoginToken.query.filter_by(token=token).first()
+            if legacy_token:
+                logger.warning('Legacy plaintext login token verified - upgrading to hashed storage')
+                legacy_token.token = self._hash_token(token)
+                db.session.commit()
+                login_token = legacy_token
         
         if not login_token:
             logger.warning(f"Invalid token attempted: {token[:10]}...")
@@ -76,10 +119,14 @@ class AuthManager:
         logger.info(f"Valid token verified for {login_token.email}")
         return login_token.email
     
-    def send_magic_link(self, email, token, request_host):
+    def send_magic_link(self, email, token):
         """Send magic link email to user"""
         # Construct magic link URL
-        magic_link = f"http://{request_host}/auth/verify?token={token}"
+        try:
+            magic_link = self._build_magic_link(token)
+        except ValueError as exc:
+            logger.error(f"Failed to build magic link URL: {exc}")
+            return False
         
         # For development, also log the link
         if self.app.config.get('ENV') == 'development' or self.app.config.get('DEBUG'):

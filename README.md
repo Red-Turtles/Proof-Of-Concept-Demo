@@ -142,15 +142,15 @@ docker run -p 3000:3000 --env-file .env animal-identifier
 ## Security Features
 
 ### CAPTCHA System
-- **Rate Limiting**: After 2 image identifications, users must complete a CAPTCHA challenge
-- **Browser Trust**: Successful CAPTCHA completion marks the browser as trusted for 30 days
-- **Math CAPTCHA**: Simple arithmetic problems for accessibility
+- **Rate Limiting**: After a configurable number of identifications (default 2), users must complete a CAPTCHA challenge
+- **Session Trust**: Successful CAPTCHA completion marks the session as trusted until it expires or the browser clears cookies
+- **Math CAPTCHA**: Simple arithmetic challenges for accessibility
 
 ### Advanced Security
 - **Browser Fingerprinting**: Unique identification based on browser characteristics
-- **IP-based Rate Limiting**: Prevents abuse from single IP addresses
-- **Session Management**: Secure session handling with configurable timeouts
-- **Security Headers**: Comprehensive security headers for XSS, clickjacking, and content type protection
+- **Session-aware Rate Limiting**: Prevents abuse within the same browser session while remaining user friendly
+- **Session Management**: Secure session handling with configurable timeouts and SameSite/Secure cookies
+- **Security Headers**: Comprehensive security headers with per-request script nonces to mitigate XSS
 
 
 ## Technical Details
@@ -171,10 +171,10 @@ docker run -p 3000:3000 --env-file .env animal-identifier
 ```env
 # Security Settings
 SECRET_KEY=your-super-secret-key-change-in-production
-RATE_LIMIT_WINDOW=3600  # 1 hour in seconds
-MAX_REQUESTS_PER_WINDOW=2  # Max requests before CAPTCHA
-CAPTCHA_TIMEOUT=300  # 5 minutes
-BROWSER_TRUST_DURATION=2592000  # 30 days in seconds
+SECURITY_RATE_LIMIT_WINDOW_SECONDS=600   # Window before counters reset (default 10 minutes)
+SECURITY_RATE_LIMIT_THRESHOLD=2          # Identifications allowed before CAPTCHA is required
+SECURITY_CAPTCHA_TTL_SECONDS=300         # CAPTCHA validity window (default 5 minutes)
+SECURITY_CAPTCHA_MAX_ATTEMPTS=3          # Attempts allowed before forcing a new challenge
 ```
 
 ### Security Endpoints

@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Animal Discovery - WildID</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-</head>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <title>Animal Discovery - WildID</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
 <body>
   <!-- Header Navigation -->
   <nav class="header-nav">
@@ -17,10 +18,13 @@
       <div class="nav-links">
         <a href="/" class="nav-link">Home</a>
         <a href="/discovery" class="nav-link active">Discovery</a>
-        {% if current_user %}
-          <a href="/history" class="nav-link">History</a>
-          <a href="/auth/logout" class="nav-link">Sign Out</a>
-        {% else %}
+          {% if current_user %}
+            <a href="/history" class="nav-link">History</a>
+            <form action="/auth/logout" method="post" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="nav-link logout-button">Sign Out</button>
+            </form>
+          {% else %}
           <a href="/auth/login" class="nav-link">Sign In</a>
         {% endif %}
       </div>
@@ -52,7 +56,8 @@
         </div>
         {% endif %}
         
-        <form id="upload-form" action="/identify" method="post" enctype="multipart/form-data">
+          <form id="upload-form" action="/identify" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           <div class="discovery-upload-area">
             <div class="upload-content">
               <div class="upload-icon">⬆</div>
@@ -69,6 +74,21 @@
               <button type="button" class="remove-file" id="remove-file">✕</button>
             </div>
           </div>
+            <div id="security-status" class="security-status-banner" style="display: none;">
+              <p id="security-message"></p>
+            </div>
+            <div id="captcha-challenge" class="captcha-challenge" style="display: none;">
+              <div class="captcha-header">
+                <span class="captcha-label">Security Check</span>
+                <button type="button" class="captcha-refresh-btn" id="captcha-refresh-btn" aria-label="New challenge">↻</button>
+              </div>
+              <div class="captcha-question" id="captcha-question"></div>
+              <div class="captcha-input-group">
+                <input type="text" id="captcha-answer" name="captcha_answer" placeholder="Enter the answer" autocomplete="off" />
+                <button type="button" class="captcha-submit-btn" id="captcha-submit-btn">Verify</button>
+              </div>
+              <p class="captcha-feedback" id="captcha-feedback"></p>
+            </div>
           <div class="form-row">
             <button type="submit" id="submit-btn" disabled>Identify Animal</button>
           </div>

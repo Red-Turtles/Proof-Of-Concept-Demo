@@ -75,6 +75,127 @@ body {
   transition: all 0.3s ease;
 }
 
+.logout-form {
+  margin: 0;
+  display: inline;
+}
+
+.logout-button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.security-status-banner {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #fff7ed;
+  border: 1px solid #fb923c;
+  border-radius: 8px;
+  color: #9a3412;
+}
+
+.security-status-banner p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.captcha-challenge {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.captcha-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.captcha-label {
+  font-weight: 600;
+  color: var(--dark-green);
+}
+
+.captcha-refresh-btn {
+  background: none;
+  border: none;
+  color: var(--medium-green);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.captcha-refresh-btn:hover {
+  color: var(--dark-green);
+  background: rgba(45, 106, 79, 0.1);
+}
+
+.captcha-question {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--dark-gray);
+}
+
+.captcha-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.captcha-input-group input {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.captcha-input-group input:focus {
+  outline: none;
+  border-color: var(--medium-green);
+  box-shadow: 0 0 0 2px rgba(45, 106, 79, 0.15);
+}
+
+.captcha-submit-btn {
+  padding: 0.6rem 1.2rem;
+  background: var(--medium-green);
+  color: var(--white);
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.captcha-submit-btn:hover {
+  background: var(--dark-green);
+}
+
+.captcha-feedback {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.captcha-feedback.success {
+  color: #166534;
+}
+
+.captcha-feedback.error {
+  color: #b91c1c;
+}
+
 .nav-link:hover {
   background: rgba(255, 255, 255, 0.1);
 }

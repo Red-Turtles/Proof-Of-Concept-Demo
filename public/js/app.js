@@ -1,8 +1,174 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Turtle Identifier App loaded');
 
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : null;
+    window.csrfToken = csrfToken;
+
+    function fetchWithCsrf(url, options = {}) {
+        const config = { ...options };
+        config.headers = config.headers ? { ...config.headers } : {};
+        const activeToken = window.csrfToken || csrfToken;
+        if (activeToken) {
+            config.headers['X-CSRF-Token'] = activeToken;
+        }
+        return fetch(url, config);
+    }
+
     // Security state management
     let securityStatus = null;
+    let currentCaptcha = null;
+
+    const securityStatusDiv = document.getElementById('security-status');
+    const securityMessageEl = document.getElementById('security-message');
+    const captchaContainer = document.getElementById('captcha-challenge');
+    const captchaQuestionEl = document.getElementById('captcha-question');
+    const captchaAnswerInput = document.getElementById('captcha-answer');
+    const captchaSubmitBtn = document.getElementById('captcha-submit-btn');
+    const captchaRefreshBtn = document.getElementById('captcha-refresh-btn');
+    const captchaFeedback = document.getElementById('captcha-feedback');
+
+    function setCaptchaFeedback(message, type) {
+        if (!captchaFeedback) {
+            return;
+        }
+        captchaFeedback.textContent = message || '';
+        captchaFeedback.classList.remove('success', 'error');
+        if (type) {
+            captchaFeedback.classList.add(type);
+        }
+    }
+
+    function enforceSubmissionState() {
+        if (!submitBtn) {
+            return;
+        }
+        const hasFile = fileInput && fileInput.files && fileInput.files[0];
+        const blocked = securityStatus && !securityStatus.is_trusted && securityStatus.rate_limited;
+        submitBtn.disabled = !hasFile || !!blocked;
+    }
+
+    function applySecurityStatus(status) {
+        if (status) {
+            securityStatus = status;
+            if (status.csrf_token) {
+                window.csrfToken = status.csrf_token;
+            }
+        }
+        updateSecurityUI();
+    }
+
+    async function loadCaptcha(force = false) {
+        if (!captchaContainer) {
+            return;
+        }
+
+        if (!force && currentCaptcha) {
+            captchaContainer.style.display = 'block';
+            return;
+        }
+
+        try {
+            const response = await fetchWithCsrf('/api/security/captcha', { method: 'POST' });
+            if (!response.ok) {
+                throw new Error(`Failed to load CAPTCHA: ${response.status}`);
+            }
+            currentCaptcha = await response.json();
+            captchaContainer.style.display = 'block';
+            if (captchaQuestionEl) {
+                captchaQuestionEl.textContent = currentCaptcha.question;
+            }
+            if (captchaAnswerInput) {
+                captchaAnswerInput.value = '';
+                captchaAnswerInput.focus();
+            }
+            setCaptchaFeedback('', null);
+            if (captchaSubmitBtn) {
+                captchaSubmitBtn.disabled = false;
+                captchaSubmitBtn.textContent = 'Verify';
+            }
+        } catch (error) {
+            console.error('Failed to load CAPTCHA challenge:', error);
+            setCaptchaFeedback('Unable to load security challenge. Please try again.', 'error');
+        }
+    }
+
+    async function submitCaptchaAnswer() {
+        if (!captchaSubmitBtn) {
+            return;
+        }
+
+        if (!currentCaptcha) {
+            await loadCaptcha(true);
+            return;
+        }
+
+        if (!captchaAnswerInput || !captchaAnswerInput.value.trim()) {
+            setCaptchaFeedback('Please enter your answer before verifying.', 'error');
+            return;
+        }
+
+        try {
+            captchaSubmitBtn.disabled = true;
+            captchaSubmitBtn.textContent = 'Verifying...';
+            setCaptchaFeedback('', null);
+
+            const response = await fetchWithCsrf('/api/security/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    captcha_id: currentCaptcha.captcha_id,
+                    answer: captchaAnswerInput.value.trim()
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                setCaptchaFeedback('Verification successful! You can continue identifying animals.', 'success');
+                currentCaptcha = null;
+                if (captchaAnswerInput) {
+                    captchaAnswerInput.value = '';
+                }
+                applySecurityStatus(result.status);
+            } else {
+                const feedback = result.error || 'Verification failed. Please try again.';
+                setCaptchaFeedback(feedback, 'error');
+                if (result.status) {
+                    applySecurityStatus(result.status);
+                }
+                if (result.code === 'too_many_attempts' || result.code === 'invalid_captcha' || result.code === 'expired_captcha') {
+                    currentCaptcha = null;
+                    await loadCaptcha(true);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to verify CAPTCHA:', error);
+            setCaptchaFeedback('Unable to verify the challenge. Please try again.', 'error');
+        } finally {
+            if (captchaSubmitBtn) {
+                captchaSubmitBtn.disabled = false;
+                captchaSubmitBtn.textContent = 'Verify';
+            }
+            enforceSubmissionState();
+        }
+    }
+
+    if (captchaRefreshBtn) {
+        captchaRefreshBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            loadCaptcha(true);
+        });
+    }
+
+    if (captchaSubmitBtn) {
+        captchaSubmitBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            submitCaptchaAnswer();
+        });
+    }
 
     // Initialize security features
     initializeSecurity();
@@ -114,12 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show file info
         if (fileName) fileName.textContent = file.name;
         if (fileInfo) fileInfo.style.display = 'flex';
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            console.log('Submit button enabled:', submitBtn.disabled);
-        } else {
-            console.error('Submit button not found!');
-        }
+        enforceSubmissionState();
 
         // Check if CAPTCHA is required
         checkSecurityRequirements();
@@ -134,36 +295,11 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Clearing file...');
         if (fileInput) fileInput.value = '';
         if (fileInfo) fileInfo.style.display = 'none';
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            console.log('Submit button disabled:', submitBtn.disabled);
-        }
+        enforceSubmissionState();
     }
 
     // Initialize submit button state
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        console.log('Initial submit button state - disabled:', submitBtn.disabled);
-    }
-
-    // Test: Add a simple test button to verify file input works
-    if (fileInput) {
-        const testBtn = document.createElement('button');
-        testBtn.textContent = 'Test File Input';
-        testBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 9999; background: red; color: white; padding: 10px;';
-        testBtn.onclick = () => {
-            console.log('Test button clicked');
-            fileInput.click();
-        };
-        document.body.appendChild(testBtn);
-        
-        // Remove test button after 10 seconds
-        setTimeout(() => {
-            if (testBtn.parentNode) {
-                testBtn.parentNode.removeChild(testBtn);
-            }
-        }, 10000);
-    }
+    enforceSubmissionState();
 
 
     // Form submission handling - simplified
@@ -180,31 +316,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // CAPTCHA form handling
-    const captchaForm = document.getElementById('captcha-form');
-    if (captchaForm) {
-        captchaForm.addEventListener('submit', function(e) {
-            const submitBtn = captchaForm.querySelector('.captcha-submit-btn');
-            const answerInput = captchaForm.querySelector('input[name="captcha_answer"]');
-            
-            if (!answerInput.value) {
-                e.preventDefault();
-                showMessage('Please enter your answer', 'error');
-                return;
-            }
-            
-            // Show loading state
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Verifying...';
-        });
-    }
-
-
     async function initializeSecurity() {
         try {
-            const response = await fetch('/api/security/status');
-            securityStatus = await response.json();
-            updateSecurityUI();
+            const response = await fetchWithCsrf('/api/security/status');
+            const status = await response.json();
+            applySecurityStatus(status);
         } catch (error) {
             console.error('Failed to load security status:', error);
         }
@@ -212,14 +328,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function checkSecurityRequirements() {
         try {
-            const response = await fetch('/api/security/status');
-            securityStatus = await response.json();
-            
+            const response = await fetchWithCsrf('/api/security/status');
+            const status = await response.json();
+            applySecurityStatus(status);
+
+            const threshold = securityStatus.rate_limit_threshold || 2;
+
             if (!securityStatus.is_trusted && securityStatus.rate_limited) {
-                showMessage('Security verification required after 2 image identifications', 'error');
-                loadCaptcha();
+                const plural = threshold === 1 ? '' : 's';
+                showMessage(`Security verification required after ${threshold} image identification${plural}`, 'error');
+                await loadCaptcha();
             } else if (!securityStatus.is_trusted) {
-                const remainingRequests = 2 - securityStatus.request_count;
+                const remainingRequests = threshold - securityStatus.request_count;
                 if (remainingRequests > 0) {
                     showMessage(`${remainingRequests} identification${remainingRequests > 1 ? 's' : ''} remaining before security verification`, 'info');
                 }
@@ -231,21 +351,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     function updateSecurityUI() {
-        const securityStatusDiv = document.getElementById('security-status');
-        const securityMessage = document.getElementById('security-message');
+        if (!securityStatusDiv || !securityMessageEl) {
+            enforceSubmissionState();
+            return;
+        }
 
         if (securityStatus && !securityStatus.is_trusted) {
             securityStatusDiv.style.display = 'block';
-            
+            const threshold = securityStatus.rate_limit_threshold || 2;
+            const remaining = Math.max(0, threshold - securityStatus.request_count);
+
             if (securityStatus.rate_limited) {
-                securityMessage.textContent = 'Rate limit reached - Security verification required';
+                securityMessageEl.textContent = 'Rate limit reached - Security verification required';
+                if (captchaContainer) {
+                    captchaContainer.style.display = 'block';
+                    if (!currentCaptcha) {
+                        loadCaptcha();
+                    }
+                }
             } else {
-                const remaining = 2 - securityStatus.request_count;
-                securityMessage.textContent = `${remaining} identification${remaining > 1 ? 's' : ''} remaining before verification`;
+                const message = remaining > 0
+                    ? `${remaining} identification${remaining === 1 ? '' : 's'} remaining before verification`
+                    : 'Security verification pending';
+                securityMessageEl.textContent = message;
+                if (captchaContainer) {
+                    captchaContainer.style.display = 'none';
+                }
             }
         } else {
             securityStatusDiv.style.display = 'none';
+            if (captchaContainer) {
+                captchaContainer.style.display = 'none';
+            }
+            currentCaptcha = null;
+            setCaptchaFeedback('', null);
         }
+
+        enforceSubmissionState();
     }
 
     function showMessage(message, type = 'info') {
@@ -259,14 +401,14 @@ document.addEventListener('DOMContentLoaded', function() {
         messageDiv.textContent = message;
 
         // Insert after security status
-        const securityStatus = document.getElementById('security-status');
-        if (securityStatus && securityStatus.style.display !== 'none') {
-            securityStatus.insertAdjacentElement('afterend', messageDiv);
+        if (securityStatusDiv && securityStatusDiv.style.display !== 'none') {
+            securityStatusDiv.insertAdjacentElement('afterend', messageDiv);
         } else {
-            // Insert at the beginning of the card
-            const card = document.querySelector('.card');
-            const firstChild = card.firstElementChild;
-            card.insertBefore(messageDiv, firstChild);
+            // Insert at the beginning of the discovery card container if available
+            const discoveryCard = document.querySelector('.discovery-card');
+            if (discoveryCard) {
+                discoveryCard.insertAdjacentElement('afterbegin', messageDiv);
+            }
         }
 
         // Auto-remove after 5 seconds

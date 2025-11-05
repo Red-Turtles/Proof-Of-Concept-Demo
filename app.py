@@ -4,14 +4,16 @@ A modern Flask app that uses AI to identify wildlife species from uploaded image
 """
 
 import os
+import secrets
 import requests
 import base64
 import json
 import uuid
 import tempfile
 import logging
-from datetime import datetime
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash
+from datetime import datetime, timedelta
+from urllib.parse import urlparse
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, g
 from flask_cors import CORS
 from flask_session import Session
 from PIL import Image
@@ -28,10 +30,42 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configure secret key for sessions
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+secret_key = os.getenv('SECRET_KEY')
+if not secret_key:
+    secret_key = secrets.token_hex(32)
+    app.logger.warning('SECRET_KEY not set - generated ephemeral key for this process. Set SECRET_KEY in environment for persistent sessions.')
+app.config['SECRET_KEY'] = secret_key
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
 app.config['SESSION_FILE_THRESHOLD'] = 100
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'true').lower() == 'true' if not app.debug else os.getenv('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
+app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=int(os.getenv('PERMANENT_SESSION_DAYS', '7')))
+app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https' if not app.debug else 'http')
+app.config['REMEMBER_COOKIE_SECURE'] = os.getenv('REMEMBER_COOKIE_SECURE', 'true').lower() == 'true' if not app.debug else os.getenv('REMEMBER_COOKIE_SECURE', 'false').lower() == 'true'
+
+
+def _parse_csv_env(var_name, fallback=None):
+    value = os.getenv(var_name)
+    if value is None:
+        return fallback[:] if fallback else []
+    parsed = [item.strip() for item in value.split(',') if item.strip()]
+    return parsed or (fallback[:] if fallback else [])
+
+
+default_allowed_hosts = ['localhost', '127.0.0.1']
+app.config['ALLOWED_HOSTS'] = _parse_csv_env('ALLOWED_HOSTS', default_allowed_hosts)
+app.config['MAGIC_LINK_BASE_URL'] = os.getenv('MAGIC_LINK_BASE_URL')
+
+default_cors_origins = ['http://localhost:3000', 'http://127.0.0.1:3000']
+if app.config['MAGIC_LINK_BASE_URL']:
+    parsed_magic_link = urlparse(app.config['MAGIC_LINK_BASE_URL'])
+    if parsed_magic_link.hostname and parsed_magic_link.hostname not in app.config['ALLOWED_HOSTS']:
+        app.config['ALLOWED_HOSTS'].append(parsed_magic_link.hostname)
+    default_cors_origins.append(app.config['MAGIC_LINK_BASE_URL'])
+allowed_cors_origins = _parse_csv_env('CORS_ALLOWED_ORIGINS', default_cors_origins)
+allowed_cors_origins = list(dict.fromkeys([origin.rstrip('/') for origin in allowed_cors_origins]))
 
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///wildid.db')
@@ -46,7 +80,7 @@ app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@wildid.app')
 
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": allowed_cors_origins}}, supports_credentials=True)
 
 # Initialize extensions
 Session(app)
@@ -69,7 +103,18 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https://*.tile.openstreetmap.org;"
+    nonce = getattr(g, 'csp_nonce', '')
+    script_sources = ["'self'", 'https://unpkg.com']
+    if nonce:
+        script_sources.append(f"'nonce-{nonce}'")
+
+    csp = " ".join([
+        "default-src 'self';",
+        f"script-src {' '.join(script_sources)};",
+        "style-src 'self' 'unsafe-inline' https://unpkg.com;",
+        "img-src 'self' data: https://*.tile.openstreetmap.org;"
+    ])
+    response.headers['Content-Security-Policy'] = csp
     return response
 
 # Configure logging
@@ -82,6 +127,68 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+CSRF_PROTECTED_METHODS = {'POST', 'PUT', 'PATCH', 'DELETE'}
+CSRF_EXEMPT_ENDPOINTS = {'static'}
+
+
+def _get_or_create_csrf_token():
+    token = session.get('_csrf_token')
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session['_csrf_token'] = token
+    return token
+
+
+@app.before_request
+def ensure_csrf_token():
+    _get_or_create_csrf_token()
+
+
+@app.before_request
+def set_csp_nonce():
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
+def _csrf_failure_response():
+    logger.warning('CSRF token missing or invalid for %s %s', request.method, request.path)
+    if request.path.startswith('/api/') or request.is_json or request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+        return jsonify({'success': False, 'error': 'CSRF token missing or invalid'}), 400
+    flash('Your session has expired. Please try again.', 'error')
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.before_request
+def csrf_protect():
+    if request.method not in CSRF_PROTECTED_METHODS:
+        return
+
+    endpoint = (request.endpoint or '').split('.')[-1]
+    if endpoint in CSRF_EXEMPT_ENDPOINTS:
+        return
+
+    session_token = session.get('_csrf_token')
+    if not session_token:
+        return _csrf_failure_response()
+
+    request_token = request.headers.get('X-CSRF-Token')
+    if not request_token:
+        if request.is_json:
+            payload = request.get_json(silent=True) or {}
+            request_token = payload.get('csrf_token')
+        else:
+            request_token = request.form.get('csrf_token')
+
+    if not request_token or not secrets.compare_digest(session_token, request_token):
+        return _csrf_failure_response()
+
+
+@app.context_processor
+def inject_security_tokens():
+    return {
+        'csrf_token': _get_or_create_csrf_token,
+        'csp_nonce': getattr(g, 'csp_nonce', '')
+    }
 
 # Configuration
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
@@ -845,9 +952,8 @@ def login():
     try:
         # Generate and send magic link
         token = auth.generate_magic_link_token(email)
-        request_host = request.host
-        
-        if auth.send_magic_link(email, token, request_host):
+
+        if auth.send_magic_link(email, token):
             flash('Check your email! We sent you a magic link to sign in.', 'success')
         else:
             flash('There was an issue sending the email. Please try again.', 'error')
@@ -888,7 +994,7 @@ def verify_magic_link():
     flash(f'Welcome back, {email}!', 'success')
     return redirect(url_for('index'))
 
-@app.route('/auth/logout')
+@app.route('/auth/logout', methods=['POST'])
 def logout():
     """Log out the current user"""
     auth.logout_user()
@@ -925,14 +1031,14 @@ def submit_feedback():
         if not identification_id or feedback not in ['correct', 'incorrect']:
             return jsonify({'success': False, 'error': 'Invalid feedback data'}), 400
         
+        # Authentication required
+        current_user = auth.get_current_user()
+        if not current_user:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
         # Get the identification
         identification = Identification.query.get(identification_id)
-        if not identification:
-            return jsonify({'success': False, 'error': 'Identification not found'}), 404
-        
-        # Verify user owns this identification
-        current_user = auth.get_current_user()
-        if current_user and identification.user_id != current_user.id:
+        if not identification or identification.user_id != current_user.id:
             return jsonify({'success': False, 'error': 'Unauthorized'}), 403
         
         # Update feedback
@@ -952,11 +1058,73 @@ def submit_feedback():
         logger.error(f"Error submitting feedback: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to submit feedback'}), 500
 
+
+@app.route('/api/security/status', methods=['GET'])
+def security_status():
+    """Return current security status for the session"""
+    status = security.get_status()
+    status['csrf_token'] = _get_or_create_csrf_token()
+    status['captcha_enabled'] = True
+    status['rate_limit_window_seconds'] = security.rate_limit_window
+    return jsonify(status)
+
+
+@app.route('/api/security/captcha', methods=['POST'])
+def generate_captcha():
+    """Generate a CAPTCHA challenge"""
+    captcha_id, question = security.create_captcha()
+    logger.info('Issued CAPTCHA challenge for session %s', session.get('browser_fingerprint', 'unknown'))
+    return jsonify({
+        'captcha_id': captcha_id,
+        'question': question,
+        'expires_in': security.captcha_ttl
+    })
+
+
+@app.route('/api/security/verify', methods=['POST'])
+def verify_captcha():
+    """Verify CAPTCHA response and update trust state"""
+    data = request.get_json() or {}
+    captcha_id = data.get('captcha_id')
+    answer = data.get('answer')
+
+    if not captcha_id or answer is None:
+        return jsonify({'success': False, 'error': 'captcha_id and answer are required'}), 400
+
+    success, error_code = security.verify_captcha(captcha_id, answer)
+
+    if success:
+        status = security.get_status()
+        logger.info('CAPTCHA verification succeeded for session %s', session.get('browser_fingerprint', 'unknown'))
+        return jsonify({'success': True, 'message': 'Verification successful', 'status': status, 'code': 'verified'})
+
+    error_messages = {
+        'invalid_captcha': 'This CAPTCHA challenge is no longer valid. Please request a new one.',
+        'expired_captcha': 'This CAPTCHA challenge expired. Please request a new one.',
+        'incorrect_answer': 'Incorrect answer. Please try again.',
+        'too_many_attempts': 'Too many incorrect attempts. Please request a new CAPTCHA.'
+    }
+
+    message = error_messages.get(error_code, 'Failed to verify CAPTCHA. Please try again.')
+    logger.warning('CAPTCHA verification failed (%s) for session %s', error_code, session.get('browser_fingerprint', 'unknown'))
+
+    status = security.get_status()
+    return jsonify({'success': False, 'error': message, 'status': status, 'code': error_code}), 400 if error_code != 'too_many_attempts' else 429
+
 @app.route('/identify', methods=['POST'])
 def upload_file():
     """Handle file upload and species identification"""
     temp_file_path = None
     current_user = auth.get_current_user()
+    allowed, reason = security.can_proceed('identify')
+    if not allowed:
+        message = 'Security verification required. Please complete the CAPTCHA challenge before continuing.'
+        wants_json = request.is_json or request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']
+        if wants_json:
+            status = security.get_status()
+            return jsonify({'error': message, 'code': reason, 'status': status}), 429
+        flash(message, 'error')
+        return redirect(url_for('discovery'))
     
     try:
         # Check if file is present
@@ -976,6 +1144,8 @@ def upload_file():
             logger.warning(f"Upload attempt with disallowed file type: {file.filename}")
             return jsonify({'error': 'File type not allowed. Please upload PNG, JPG, JPEG, GIF, BMP, or WEBP'}), 400
         
+        security.record_request('identify')
+
         # Create secure temporary file
         try:
             temp_file_path, unique_filename = create_secure_temp_file(file)
@@ -1155,4 +1325,5 @@ if __name__ == '__main__':
     print("   Press Ctrl+C to stop the server")
     print()
     
-    app.run(debug=True, host='0.0.0.0', port=port)
+    debug_mode = os.getenv('FLASK_DEBUG', 'false').lower() in ('1', 'true', 'yes')
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
