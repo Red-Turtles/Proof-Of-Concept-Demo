@@ -13,16 +13,16 @@ sequenceDiagram
 
     alt trust needed
         Guard-->>Flask: captcha_required
-        Flask-->>Browser: 429 + challenge info
-        Browser->>Flask: POST /api/security/verify
+        Flask-->>Browser: POST /api/security/captcha (challenge details)
+        Browser->>Flask: POST /api/security/verify (answer + CSRF)
         Flask->>Guard: verify_captcha()
         Guard-->>Flask: trusted_session
     end
 
     Guard-->>Flask: allowed
-    Flask->>Flask: validate & store temp image
-    Flask->>Together: request species analysis
-    Together-->>Flask: JSON result
-    Flask->>DB: Save result + feedback state
-    Flask-->>Browser: Render results page
-    Browser-->>User: Show identification + security status
+    Flask->>Flask: validate upload & save temp file
+    Flask->>Together: send base64 image
+    Together-->>Flask: species JSON
+    Flask->>DB: write identification + session status
+    Flask-->>Browser: render results + trust state
+    Browser-->>User: show species insight

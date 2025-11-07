@@ -6,24 +6,24 @@ flowchart LR
     classDef data fill:#22c55e,stroke:#166534,color:#052e16;
     classDef external fill:#facc15,stroke:#a16207,color:#451a03;
 
-    Browser[Browser\nsession + CSRF cookie]:::client --> App[Flask App\n`app.py`]:::app
-    App --> Views[Templates & static assets]:::service
-    Views --> Browser
+    Browser[Browser\nsession + CSRF cookie]:::client -->|user requests| App[Flask App\n`app.py`]:::app
+    App -->|render| Views[Templates & static assets]:::service
+    Views -->|HTML + JS| Browser
 
-    App --> Shield[Security Middleware\nCSRF + CSP + headers]:::guard
-    Shield --> SecurityMgr[SecurityManager\nRate limit • CAPTCHA • trust]:::guard
+    App -->|protect| Shield[Security Middleware\nCSRF + CSP + headers]:::guard
+    Shield -->|session state| SecurityMgr[SecurityManager\nRate limit • CAPTCHA • trust]:::guard
     SecurityMgr --> Sessions[(Session store)]:::data
 
-    App --> AuthSvc[AuthManager\nmagic links]:::service
-    AuthSvc --> Mailer[[SMTP / Mailhog]]:::external
+    App -->|login magic| AuthSvc[AuthManager\nmagic links]:::service
+    AuthSvc -->|email| Mailer[[SMTP / Mailhog]]:::external
 
-    App --> IdentifySvc[Identify Service\nTogether.ai orchestration]:::service
-    IdentifySvc --> TempFiles(((Temp image storage))):::data
-    IdentifySvc --> Together[[Together.ai Vision API]]:::external
-    IdentifySvc --> MapTiles[[OpenStreetMap tiles]]:::external
+    App -->|identify| IdentifySvc[Identify Service\nTogether.ai orchestration]:::service
+    IdentifySvc -->|write temp file| TempFiles(((Temp image storage))):::data
+    IdentifySvc -->|image analysis| Together[[Together.ai Vision API]]:::external
+    IdentifySvc -->|map tiles| MapTiles[[OpenStreetMap tiles]]:::external
 
-    App --> HistorySvc[History Service\npersisted results]:::service
-    App --> FeedbackSvc[Feedback API]:::service
-    HistorySvc --> Database[(SQL database)]:::data
-    FeedbackSvc --> Database
+    App -->|persist result| HistorySvc[History Service\npersisted results]:::service
+    App -->|capture feedback| FeedbackSvc[Feedback API]:::service
+    HistorySvc -->|store JSON| Database[(SQL database)]:::data
+    FeedbackSvc -->|store feedback| Database
 
