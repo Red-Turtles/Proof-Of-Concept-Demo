@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WildID - Discover the Wild</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-</head>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <title>WildID - Discover the Wild</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
 <body>
   <!-- Header Navigation -->
   <nav class="header-nav">
@@ -17,10 +18,13 @@
       <div class="nav-links">
         <a href="/" class="nav-link active">Home</a>
         <a href="/discovery" class="nav-link">Discovery</a>
-        {% if current_user %}
-          <a href="/history" class="nav-link">History</a>
-          <a href="/auth/logout" class="nav-link">Sign Out ({{ current_user.email }})</a>
-        {% else %}
+          {% if current_user %}
+            <a href="/history" class="nav-link">History</a>
+            <form action="/auth/logout" method="post" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="nav-link logout-button">Sign Out ({{ current_user.email }})</button>
+            </form>
+          {% else %}
           <a href="/auth/login" class="nav-link">Sign In</a>
         {% endif %}
       </div>
