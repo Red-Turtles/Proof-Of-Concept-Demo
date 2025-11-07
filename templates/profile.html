@@ -223,8 +223,14 @@
   <div class="profile-container">
     <div class="profile-header">
       <div class="profile-card">
-        <h1>Welcome back, {{ current_user.email }}</h1>
+        <h1>Welcome back, {{ display_name }}</h1>
+        {% if current_user.username %}
+        <p style="margin:4px 0 12px; color:#64748b;">@{{ current_user.username }}</p>
+        {% endif %}
         <p>Explore your recent discoveries and keep track of your wildlife identifications.</p>
+        {% if not current_user.username %}
+        <p style="margin-top:-4px; color:#94a3b8; font-size:14px;">Tip: add a username soon to personalize your profile.</p>
+        {% endif %}
 
         <div class="profile-metrics">
           <div class="metric-tile">
@@ -248,8 +254,8 @@
         </div>
 
         <div class="cta-row">
-          <a href="/discovery" class="primary" data-transition="true"><i class="fas fa-upload"></i> Start New Identification</a>
-          <a href="/history" class="secondary" data-transition="true"><i class="fas fa-clock"></i> View Full History</a>
+        <a href="/discovery" class="primary" data-transition="true"><i class="fas fa-upload"></i>Start New Identification</a>
+        <a href="/history" class="secondary" data-transition="true"><i class="fas fa-clock"></i>View Full History</a>
         </div>
       </div>
 
@@ -353,6 +359,23 @@
       </div>
       {% endif %}
     </section>
+
+    <div class="profile-edit-card">
+      <h3>Update Username</h3>
+      <form action="{{ url_for('update_username') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="text" name="username" value="{{ current_user.username or '' }}" placeholder="Choose a username" minlength="3" maxlength="30" pattern="[A-Za-z0-9_]+" required />
+        <button type="submit" class="save-btn"><i class="fas fa-save"></i> Save Username</button>
+      </form>
+      <p class="hint">Use 3–30 characters: letters, numbers, and underscores only. This name will appear on your community posts.</p>
+    </div>
+
+    <div class="profile-signout-wrapper">
+      <form action="/auth/logout" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="signout-btn"><i class="fas fa-sign-out-alt"></i>Sign Out</button>
+      </form>
+    </div>
   </div>
 
   <footer>

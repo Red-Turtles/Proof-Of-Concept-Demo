@@ -11,6 +11,7 @@ from flask import session, request
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 import logging
+import re
 
 from models import db, User, LoginToken
 
@@ -198,6 +199,19 @@ The WildID Team
             logger.error(f"Failed to send magic link email to {email}: {str(e)}")
             return False
     
+    def _generate_unique_username(self, email):
+        seed = email.split('@')[0]
+        base = re.sub(r'[^a-z0-9]+', '', seed.lower())
+        if not base:
+            base = 'wildid'
+
+        candidate = base
+        suffix = 2
+        while User.query.filter_by(username=candidate).first():
+            candidate = f"{base}{suffix}"
+            suffix += 1
+        return candidate
+
     def create_or_get_user(self, email):
         """Create a new user or get existing user by email"""
         email = email.lower().strip()
@@ -207,9 +221,13 @@ The WildID Team
         if not user:
             # Create new user
             user = User(email=email)
+            user.username = self._generate_unique_username(email)
             db.session.add(user)
             db.session.commit()
             logger.info(f"New user created: {email}")
+        elif not user.username:
+            user.username = self._generate_unique_username(email)
+            db.session.commit()
         
         return user
     

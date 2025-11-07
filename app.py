@@ -20,6 +20,7 @@ from PIL import Image
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from sqlalchemy import inspect, text, func
+import re
 from security import SecurityManager
 from models import db, User, Identification, UserBadge
 from auth import AuthManager, mail
@@ -112,6 +113,27 @@ with app.app_context():
         for statement in migrations:
             db.session.execute(text(statement))
         if migrations:
+            db.session.commit()
+        user_columns = {column['name'] for column in inspector.get_columns('users')}
+        if 'username' not in user_columns:
+            try:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(80)"))
+                db.session.commit()
+            except Exception as e:
+                app.logger.error(f"Failed to add username column: {e}")
+                db.session.rollback()
+
+        users_without_username = (
+            User.query
+            .filter((User.username.is_(None)) | (User.username == ''))
+            .all()
+        )
+        for user in users_without_username:
+            try:
+                user.username = auth._generate_unique_username(user.email)
+            except Exception:
+                user.username = None
+        if users_without_username:
             db.session.commit()
     except Exception as migration_error:
         app.logger.error(f"Failed to ensure identifications columns: {migration_error}")
@@ -274,6 +296,18 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def get_display_name(user):
+    if not user:
+        return ''
+    username = getattr(user, 'username', None)
+    if username:
+        return username
+    email = getattr(user, 'email', '')
+    if email:
+        return email.split('@')[0]
+    return 'Explorer'
 
 
 def calculate_user_identification_stats(user_id):
@@ -1163,7 +1197,7 @@ def verify_magic_link():
     response = redirect(url_for('index'))
     auth.set_remember_cookie(response, user)
     
-    flash(f'Welcome back, {email}!', 'success')
+    flash(f'Welcome back, {get_display_name(user)}!', 'success')
     return response
 
 @app.route('/auth/logout', methods=['POST'])
@@ -1215,6 +1249,8 @@ def profile():
 
     badge_overview, badge_stats = build_badge_overview(current_user.id)
 
+    display_name = get_display_name(current_user)
+
     return render_template(
         'profile.html',
         current_user=current_user,
@@ -1222,8 +1258,40 @@ def profile():
         total_identifications=total_identifications,
         latest_identification=latest_identification,
         badge_overview=badge_overview,
-        badge_stats=badge_stats
+        badge_stats=badge_stats,
+        display_name=display_name
     )
+
+
+@app.route('/profile/username', methods=['POST'])
+def update_username():
+    current_user = auth.get_current_user()
+
+    if not current_user:
+        flash('Please sign in to update your username.', 'info')
+        return redirect(url_for('login'))
+
+    desired_username = request.form.get('username', '').strip()
+
+    if not desired_username:
+        flash('Please enter a username.', 'error')
+        return redirect(url_for('profile'))
+
+    if not re.match(r'^[A-Za-z0-9_]{3,30}$', desired_username):
+        flash('Usernames must be 3-30 characters and may contain letters, numbers, and underscores.', 'error')
+        return redirect(url_for('profile'))
+
+    normalized = desired_username.lower()
+    existing = User.query.filter(db.func.lower(User.username) == normalized).first()
+    if existing and existing.id != current_user.id:
+        flash('That username is already taken. Please choose another.', 'error')
+        return redirect(url_for('profile'))
+
+    current_user.username = desired_username
+    db.session.commit()
+
+    flash('Username updated successfully!', 'success')
+    return redirect(url_for('profile'))
 
 @app.route('/history/<int:identification_id>')
 def history_detail(identification_id):
