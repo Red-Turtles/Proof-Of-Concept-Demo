@@ -1,66 +1,29 @@
 flowchart LR
     classDef client fill:#0ea5e9,stroke:#0369a1,color:#0f172a,font-weight:bold;
-    classDef flask fill:#6366f1,stroke:#312e81,color:#f8fafc;
-    classDef security fill:#f97316,stroke:#c2410c,color:#1f2937;
-    classDef data fill:#22c55e,stroke:#15803d,color:#052e16;
-    classDef external fill:#facc15,stroke:#ca8a04,color:#713f12;
-    classDef storage fill:#a855f7,stroke:#6b21a8,color:#faf5ff;
+    classDef app fill:#6366f1,stroke:#312e81,color:#ffffff,font-weight:bold;
+    classDef guard fill:#f97316,stroke:#c2410c,color:#1f2937,font-weight:bold;
+    classDef service fill:#38bdf8,stroke:#1d4ed8,color:#0f172a;
+    classDef data fill:#22c55e,stroke:#166534,color:#052e16;
+    classDef external fill:#facc15,stroke:#a16207,color:#451a03;
 
-    subgraph Client
-        Browser[Browser Session\nCSRF token + cookies]:::client
-    end
+    Browser[Browser\nsession + CSRF cookie]:::client --> App[Flask App\n`app.py`]:::app
+    App --> Views[Templates & static assets]:::service
+    Views --> Browser
 
-    subgraph Flask_App[Flask Application]
-        Controller[Routes & Controllers\n`app.py`]:::flask
-        Templates[Templates & Static JS\n`templates/` & `static/`]:::flask
+    App --> Shield[Security Middleware\nCSRF + CSP + headers]:::guard
+    Shield --> SecurityMgr[SecurityManager\nRate limit • CAPTCHA • trust]:::guard
+    SecurityMgr --> Sessions[(Session store)]:::data
 
-        subgraph Security_Layer[Security Layer]
-            SecurityMgr[SecurityManager\nRate limiting & CAPTCHA\n`security.py`]:::security
-            CSRFGuard[CSRF Middleware\nbefore_request]:::security
-            CSPHeaders[CSP & Response Headers\n`add_security_headers`]:::security
-        end
+    App --> AuthSvc[AuthManager\nmagic links]:::service
+    AuthSvc --> Mailer[[SMTP / Mailhog]]:::external
 
-        subgraph Auth_Layer[Authentication Layer]
-            AuthMgr[AuthManager\nMagic links & sessions\n`auth.py`]:::flask
-        end
+    App --> IdentifySvc[Identify Service\nTogether.ai orchestration]:::service
+    IdentifySvc --> TempFiles(((Temp image storage))):::data
+    IdentifySvc --> Together[[Together.ai Vision API]]:::external
+    IdentifySvc --> MapTiles[[OpenStreetMap tiles]]:::external
 
-        subgraph Services[Domain Services]
-            Identify[Image Identification Pipeline\nTogether.ai prompt & parsing]:::flask
-            HistorySvc[Identification History & Map Data\n`models.py`]:::flask
-            FeedbackSvc[Feedback API `/api/feedback`]:::flask
-        end
-    end
+    App --> HistorySvc[History Service\npersisted results]:::service
+    App --> FeedbackSvc[Feedback API]:::service
+    HistorySvc --> Database[(SQL database)]:::data
+    FeedbackSvc --> Database
 
-    subgraph DataStores[Data & State]
-        SQLite[(SQLite / DATABASE_URL)]:::storage
-        Sessions[(Filesystem Session Store)]:::storage
-        TempFiles(((Secure Temp Files))):::storage
-    end
-
-    TogetherAI[[Together.ai Vision API]]:::external
-    Mail[[SMTP / Mailhog\nFlask-Mail]]:::external
-    Maps[[OpenStreetMap Tiles]]:::external
-
-    Browser -->|HTTP requests| Controller
-    Controller --> Templates
-    Templates -->|Rendered HTML + JS| Browser
-
-    Controller --> SecurityMgr
-    SecurityMgr --> Sessions
-    Controller --> CSRFGuard
-    Controller --> CSPHeaders
-
-    Controller --> AuthMgr
-    AuthMgr --> Mail
-
-    Controller --> Identify
-    Identify --> TogetherAI
-    Identify --> TempFiles
-
-    Controller --> HistorySvc
-    Controller --> FeedbackSvc
-    HistorySvc --> SQLite
-    FeedbackSvc --> SQLite
-
-    Identify --> Maps
-    Browser --> Maps

@@ -1,39 +1,28 @@
 sequenceDiagram
-    participant U as User
-    participant B as Browser Session
-    participant F as Flask Route `/identify`
-    participant S as SecurityManager
-    participant C as CAPTCHA Verify
-    participant T as Together.ai API
-    participant D as Database (SQLAlchemy)
+    participant User
+    participant Browser
+    participant Flask as Flask `/identify`
+    participant Guard as Security Manager
+    participant Captcha as CAPTCHA
+    participant Together as Together.ai
+    participant DB as Database
 
-    U->>B: Click “Identify” with image selected
-    B->>F: GET /api/security/status (fetch CSRF + limits)
-    F->>S: get_status()
-    S-->>F: Security state + csrf_token
-    F-->>B: JSON response
+    User->>Browser: Select image & click Identify
+    Browser->>Flask: POST /identify (file + CSRF token)
+    Flask->>Guard: check_session()
 
-    B->>F: POST /identify (image + X-CSRF-Token)
-    F->>S: can_proceed("identify")
-
-    alt Rate limit hit
-        S-->>F: Block (captcha_required)
-        F-->>B: 429 + guidance
-        B->>F: POST /api/security/captcha
-        F->>S: create_captcha()
-        S-->>F: {captcha_id, question}
-        F-->>B: Present math challenge
-        B->>C: User solves challenge
-        C->>B: Answer
-        B->>F: POST /api/security/verify
-        F->>S: verify_captcha()
-        S-->>F: Success, mark session trusted
+    alt trust needed
+        Guard-->>Flask: captcha_required
+        Flask-->>Browser: 429 + challenge info
+        Browser->>Flask: POST /api/security/verify
+        Flask->>Guard: verify_captcha()
+        Guard-->>Flask: trusted_session
     end
 
-    F->>S: record_request("identify")
-    F->>F: Secure temp file + Pillow validation
-    F->>T: Submit base64 image for classification
-    T-->>F: Species JSON result
-    F->>D: Persist identification + feedback state
-    F-->>B: Render results page & updated status
-    B-->>U: Display species insights, confidence, feedback buttons
+    Guard-->>Flask: allowed
+    Flask->>Flask: validate & store temp image
+    Flask->>Together: request species analysis
+    Together-->>Flask: JSON result
+    Flask->>DB: Save result + feedback state
+    Flask-->>Browser: Render results page
+    Browser-->>User: Show identification + security status
