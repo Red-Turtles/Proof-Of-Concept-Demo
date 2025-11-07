@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant User
+    participant Browser
+    participant Flask as Flask `/identify`
+    participant Guard as Security Manager
+    participant Captcha as CAPTCHA
+    participant Together as Together.ai
+    participant DB as Database
+
+    User->>Browser: Select image & click Identify
+    Browser->>Flask: POST /identify (file + CSRF token)
+    Flask->>Guard: check_session()
+
+    alt trust needed
+        Guard-->>Flask: captcha_required
+        Flask-->>Browser: POST /api/security/captcha (challenge details)
+        Browser->>Flask: POST /api/security/verify (answer + CSRF)
+        Flask->>Guard: verify_captcha()
+        Guard-->>Flask: trusted_session
+    end
+
+    Guard-->>Flask: allowed
+    Flask->>Flask: validate upload & save temp file
+    Flask->>Together: send base64 image
+    Together-->>Flask: species JSON
+    Flask->>DB: write identification + session status
+    Flask-->>Browser: render results + trust state
+    Browser-->>User: show species insight

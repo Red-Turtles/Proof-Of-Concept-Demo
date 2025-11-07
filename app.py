@@ -13,7 +13,7 @@ import tempfile
 import logging
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, g
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, g, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
 from PIL import Image
@@ -1283,6 +1283,12 @@ def get_habitat_api(species):
     animal_type = request.args.get('animal_type', '')
     habitat_data = get_animal_habitat_data(species, common_name, animal_type)
     return jsonify(habitat_data)
+
+
+@app.route('/docs/diagrams')
+def diagrams():
+    """Serve interactive architecture and security diagrams"""
+    return send_from_directory('docs', 'diagrams.html')
 
 @app.route('/test-coordinates')
 def test_coordinates():

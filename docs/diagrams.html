@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WildID Architecture & Security Diagrams</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem clamp(1rem, 5vw, 3rem);
+        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        min-height: 100vh;
+        box-sizing: border-box;
+      }
+
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        gap: 3rem;
+      }
+
+      header {
+        text-align: center;
+        display: grid;
+        gap: 1rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.5rem, 4vw, 3.25rem);
+        font-weight: 600;
+        color: #facc15;
+        letter-spacing: -0.02em;
+      }
+
+      p {
+        margin: 0;
+        font-size: clamp(1rem, 2vw, 1.125rem);
+        color: #cbd5f5;
+      }
+
+      section {
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 18px;
+        padding: clamp(1.75rem, 4vw, 2.5rem);
+        box-shadow: 0 24px 60px rgba(14, 116, 144, 0.2);
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: clamp(1.75rem, 2.5vw, 2rem);
+        font-weight: 600;
+        color: #38bdf8;
+        letter-spacing: -0.01em;
+      }
+
+      .notes {
+        font-size: 0.95rem;
+        color: #94a3b8;
+        line-height: 1.6;
+      }
+
+      .mermaid {
+        background: rgba(15, 23, 42, 0.4);
+        border-radius: 12px;
+        padding: 1.5rem clamp(1rem, 3vw, 2rem);
+        overflow-x: auto;
+      }
+
+      footer {
+        text-align: center;
+        font-size: 0.95rem;
+        color: #64748b;
+        margin-top: 2rem;
+      }
+
+      a {
+        color: #38bdf8;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding-inline: clamp(0.75rem, 6vw, 1.5rem);
+        }
+
+        section {
+          padding: clamp(1.25rem, 6vw, 1.75rem);
+        }
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "neutral"
+      });
+    </script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>WildID Architecture &amp; Security Diagrams</h1>
+        <p>
+          Interactive, always up-to-date visuals describing how the AI identification pipeline and layered
+          security model work together.
+        </p>
+      </header>
+
+      <section>
+        <div>
+          <h2>System Architecture</h2>
+          <p class="notes">
+            Shows request flow from the browser through Flask controllers, security components, services,
+            and external integrations. Helpful when onboarding contributors or discussing infrastructure
+            updates.
+          </p>
+        </div>
+        <div class="mermaid">
+          flowchart LR
+              classDef client fill:#0ea5e9,stroke:#0369a1,color:#0f172a,font-weight:bold;
+              classDef flask fill:#6366f1,stroke:#312e81,color:#f8fafc;
+              classDef security fill:#f97316,stroke:#c2410c,color:#1f2937;
+              classDef data fill:#22c55e,stroke:#15803d,color:#052e16;
+              classDef external fill:#facc15,stroke:#ca8a04,color:#713f12;
+              classDef storage fill:#a855f7,stroke:#6b21a8,color:#faf5ff;
+
+              subgraph Client
+                  Browser[Browser Session\nCSRF token + cookies]:::client
+              end
+
+              subgraph Flask_App[Flask Application]
+                  Controller[Routes & Controllers\n`app.py`]:::flask
+                  Templates[Templates & Static JS\n`templates/` & `static/`]:::flask
+
+                  subgraph Security_Layer[Security Layer]
+                      SecurityMgr[SecurityManager\nRate limiting & CAPTCHA\n`security.py`]:::security
+                      CSRFGuard[CSRF Middleware\nbefore_request]:::security
+                      CSPHeaders[CSP & Response Headers\n`add_security_headers`]:::security
+                  end
+
+                  subgraph Auth_Layer[Authentication Layer]
+                      AuthMgr[AuthManager\nMagic links & sessions\n`auth.py`]:::flask
+                  end
+
+                  subgraph Services[Domain Services]
+                      Identify[Image Identification Pipeline\nTogether.ai prompt & parsing]:::flask
+                      HistorySvc[Identification History & Map Data\n`models.py`]:::flask
+                      FeedbackSvc[Feedback API `/api/feedback`]:::flask
+                  end
+              end
+
+              subgraph DataStores[Data & State]
+                  SQLite[(SQLite / DATABASE_URL)]:::storage
+                  Sessions[(Filesystem Session Store)]:::storage
+                  TempFiles(((Secure Temp Files))):::storage
+              end
+
+              TogetherAI[[Together.ai Vision API]]:::external
+              Mail[[SMTP / Mailhog\nFlask-Mail]]:::external
+              Maps[[OpenStreetMap Tiles]]:::external
+
+              Browser -->|HTTP requests| Controller
+              Controller --> Templates
+              Templates -->|Rendered HTML + JS| Browser
+
+              Controller --> SecurityMgr
+              SecurityMgr --> Sessions
+              Controller --> CSRFGuard
+              Controller --> CSPHeaders
+
+              Controller --> AuthMgr
+              AuthMgr --> Mail
+
+              Controller --> Identify
+              Identify --> TogetherAI
+              Identify --> TempFiles
+
+              Controller --> HistorySvc
+              Controller --> FeedbackSvc
+              HistorySvc --> SQLite
+              FeedbackSvc --> SQLite
+
+              Identify --> Maps
+              Browser --> Maps
+        </div>
+      </section>
+
+      <section>
+        <div>
+          <h2>Security Request Flow</h2>
+          <p class="notes">
+            Sequence diagram depicting rate limiting, CAPTCHA verification, Together.ai inference, and
+            persistence. Use it to trace how security gates requests and where to hook additional checks.
+          </p>
+        </div>
+        <div class="mermaid">
+          sequenceDiagram
+              participant U as User
+              participant B as Browser Session
+              participant F as Flask Route `/identify`
+              participant S as SecurityManager
+              participant C as CAPTCHA Verify
+              participant T as Together.ai API
+              participant D as Database (SQLAlchemy)
+
+              U->>B: Click “Identify” with image selected
+              B->>F: GET /api/security/status (fetch CSRF + limits)
+              F->>S: get_status()
+              S-->>F: Security state + csrf_token
+              F-->>B: JSON response
+
+              B->>F: POST /identify (image + X-CSRF-Token)
+              F->>S: can_proceed("identify")
+
+              alt Rate limit hit
+                  S-->>F: Block (captcha_required)
+                  F-->>B: 429 + guidance
+                  B->>F: POST /api/security/captcha
+                  F->>S: create_captcha()
+                  S-->>F: {captcha_id, question}
+                  F-->>B: Present math challenge
+                  B->>C: User solves challenge
+                  C->>B: Answer
+                  B->>F: POST /api/security/verify
+                  F->>S: verify_captcha()
+                  S-->>F: Success, mark session trusted
+              end
+
+              F->>S: record_request("identify")
+              F->>F: Secure temp file + Pillow validation
+              F->>T: Submit base64 image for classification
+              T-->>F: Species JSON result
+              F->>D: Persist identification + feedback state
+              F-->>B: Render results page & updated status
+              B-->>U: Display species insights, confidence, feedback buttons
+        </div>
+      </section>
+
+      <section>
+        <div>
+          <h2>Security Control Mind Map</h2>
+          <p class="notes">
+            High-level overview of layered defenses (session integrity, request hardening, abuse
+            prevention, identity, and data protection). Use during audits or planning future security work.
+          </p>
+        </div>
+        <div class="mermaid">
+          mindmap
+            root((Security Controls))
+              "Session Integrity"
+                "Filesystem-backed sessions"
+                "Secure/SameSite cookies"
+                "Browser fingerprinting for trust"
+              "Request Hardening"
+                "CSRF tokens on state-changing routes"
+                "Per-request CSP nonce"
+                "Strict response headers"
+              "Abuse Prevention"
+                "Action-scoped rate limiting"
+                "Math CAPTCHA challenges"
+                "Trusted session mode after verification"
+              "Identity & Access"
+                "Magic link tokens (hashed + 15m TTL)"
+                "One-time token invalidation"
+                "Feedback API gated by auth"
+              "Data Protection"
+                "Secure temp file creation & cleanup"
+                "Image validation with Pillow"
+                "SQLite persistence via SQLAlchemy"
+        </div>
+      </section>
+
+      <footer>
+        Open this file locally or host it with your docs site. To update the visuals, edit the Mermaid
+        definitions inside each <code>div.mermaid</code> block.
+      </footer>
+    </main>
+  </body>
+</html>

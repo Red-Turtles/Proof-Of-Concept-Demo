@@ -1,0 +1,29 @@
+flowchart LR
+    classDef client fill:#0ea5e9,stroke:#0369a1,color:#0f172a,font-weight:bold;
+    classDef app fill:#6366f1,stroke:#312e81,color:#ffffff,font-weight:bold;
+    classDef guard fill:#f97316,stroke:#c2410c,color:#1f2937,font-weight:bold;
+    classDef service fill:#38bdf8,stroke:#1d4ed8,color:#0f172a;
+    classDef data fill:#22c55e,stroke:#166534,color:#052e16;
+    classDef external fill:#facc15,stroke:#a16207,color:#451a03;
+
+    Browser[Browser\nsession + CSRF cookie]:::client -->|user requests| App[Flask App\n`app.py`]:::app
+    App -->|render| Views[Templates & static assets]:::service
+    Views -->|HTML + JS| Browser
+
+    App -->|protect| Shield[Security Middleware\nCSRF + CSP + headers]:::guard
+    Shield -->|session state| SecurityMgr[SecurityManager\nRate limit • CAPTCHA • trust]:::guard
+    SecurityMgr --> Sessions[(Session store)]:::data
+
+    App -->|login magic| AuthSvc[AuthManager\nmagic links]:::service
+    AuthSvc -->|email| Mailer[[SMTP / Mailhog]]:::external
+
+    App -->|identify| IdentifySvc[Identify Service\nTogether.ai orchestration]:::service
+    IdentifySvc -->|write temp file| TempFiles(((Temp image storage))):::data
+    IdentifySvc -->|image analysis| Together[[Together.ai Vision API]]:::external
+    IdentifySvc -->|map tiles| MapTiles[[OpenStreetMap tiles]]:::external
+
+    App -->|persist result| HistorySvc[History Service\npersisted results]:::service
+    App -->|capture feedback| FeedbackSvc[Feedback API]:::service
+    HistorySvc -->|store JSON| Database[(SQL database)]:::data
+    FeedbackSvc -->|store feedback| Database
+
