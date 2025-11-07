@@ -297,7 +297,7 @@
         <div class="empty-state-icon">🔍</div>
         <h2>No Identifications Yet</h2>
         <p>Start discovering wildlife by uploading your first image!</p>
-        <a href="/discovery" class="empty-state-btn">
+        <a href="/discovery" class="empty-state-btn" data-transition="true">
           <i class="fas fa-upload"></i> Identify an Animal
         </a>
       </div>
@@ -310,6 +310,8 @@
       <p>WildID • Wildlife Identification • Auto file cleanup • Interactive habitat mapping</p>
     </div>
   </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
 

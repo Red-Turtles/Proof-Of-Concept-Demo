@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <title>Sign In - WildID</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sign In - WildID</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <style>
     .auth-container {
       max-width: 480px;
@@ -175,8 +174,7 @@
 
     {% if not email_sent %}
     <!-- Login Form -->
-      <form class="auth-form" method="POST" action="/auth/login">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <form class="auth-form" method="POST" action="/auth/login">
       <div class="form-group">
         <label for="email">Email Address</label>
         <input 
@@ -209,7 +207,7 @@
 
     <div class="auth-footer">
       <p>New to WildID? Registration happens automatically when you sign in.</p>
-      <p><a href="/">Back to Home</a></p>
+      <p><a href="/" data-transition="true">Back to Home</a></p>
     </div>
   </div>
 
@@ -219,6 +217,8 @@
       <p>WildID • Wildlife Identification • Auto file cleanup • Interactive habitat mapping</p>
     </div>
   </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
 

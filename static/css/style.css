@@ -22,6 +22,10 @@ body {
   line-height: 1.6;
 }
 
+body.is-transitioning {
+  overflow: hidden;
+}
+
 /* Header Navigation */
 .header-nav {
   background: var(--dark-green);
@@ -66,13 +70,36 @@ body {
   align-items: center;
 }
 
-.nav-link {
+.nav-link,
+.logout-button {
+  position: relative;
+  display: inline-block;
   color: var(--white);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
   padding: 0.5rem 1rem;
   border-radius: 6px;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease, background 0.3s ease;
+}
+
+
+.nav-link::after,
+.logout-button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 2px;
+  background: var(--yellow);
+  transition: width 0.3s ease;
+  opacity: 0.9;
+}
+
+.nav-link:hover::after,
+.nav-link.active::after,
+.logout-button:hover::after {
+  width: 100%;
 }
 
 .logout-form {
@@ -81,14 +108,79 @@ body {
 }
 
 .logout-button {
-  background: none;
+  background: transparent;
   border: none;
-  color: inherit;
+  color: var(--white);
   font: inherit;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  display: inline-block;
   cursor: pointer;
-  transition: all 0.3s ease;
+}
+
+.page-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.page-transition.is-active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.page-transition .fade-layer {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 40% 40%, rgba(255, 244, 181, 0.35), rgba(26, 77, 58, 0.9));
+  opacity: 0;
+}
+
+.page-transition svg.leaf {
+  width: 44vmin;
+  height: 44vmin;
+  opacity: 0;
+  transform-origin: center;
+  transform: scale(0.1) rotate(-12deg);
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.25));
+}
+
+.page-transition.is-active .fade-layer {
+  animation: page-fade 0.55s ease forwards;
+}
+
+.page-transition.is-active svg.leaf {
+  animation: leaf-zoom 0.6s cubic-bezier(0.83, 0, 0.17, 1) forwards;
+}
+
+@keyframes page-fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes leaf-zoom {
+  0% {
+    opacity: 0;
+    transform: scale(0.12) rotate(-12deg);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(12) rotate(0deg);
+  }
 }
 
 .security-status-banner {
