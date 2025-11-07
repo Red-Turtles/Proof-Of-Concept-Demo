@@ -19,11 +19,18 @@
         <a href="/" class="nav-link">Home</a>
         <a href="/discovery" class="nav-link active">Discovery</a>
           {% if current_user %}
-            <a href="/history" class="nav-link">History</a>
-            <form action="/auth/logout" method="post" class="logout-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-              <button type="submit" class="nav-link logout-button">Sign Out</button>
-            </form>
+            <div class="profile-menu">
+              <a href="/profile" class="nav-link profile-toggle" data-transition="true">Profile</a>
+              <div class="profile-dropdown">
+                <a href="/profile" data-transition="true">View Profile</a>
+                <a href="/history" data-transition="true">History</a>
+                <hr class="dropdown-divider" />
+                <form action="/auth/logout" method="post" class="logout-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button type="submit">Sign Out</button>
+                </form>
+              </div>
+            </div>
           {% else %}
           <a href="/auth/login" class="nav-link">Sign In</a>
         {% endif %}

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <title>My Profile - WildID</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    .profile-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+
+    .profile-header {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .profile-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .profile-card h1 {
+      font-size: 28px;
+      margin-bottom: 4px;
+      color: #1f2937;
+    }
+
+    .profile-card p {
+      margin: 0;
+      color: #6b7280;
+    }
+
+    .profile-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .metric-tile {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .metric-tile span {
+      display: block;
+      font-size: 14px;
+      text-transform: uppercase;
+      color: #64748b;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-tile strong {
+      font-size: 26px;
+      color: #0f172a;
+    }
+
+    .recents-section {
+      margin-top: 48px;
+    }
+
+    .recents-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .recents-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .recent-card {
+      background: white;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .recent-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .recent-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      background: #f1f5f9;
+    }
+
+    .recent-content {
+      padding: 18px;
+    }
+
+    .recent-content h3 {
+      margin: 0;
+      font-size: 20px;
+      color: #1f2937;
+    }
+
+    .recent-content p {
+      margin: 6px 0 12px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .recent-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .cta-row {
+      margin-top: 32px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .cta-row a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 999px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .cta-row a.primary {
+      background: #2d6a4f;
+      color: white;
+      box-shadow: 0 10px 20px rgba(45, 106, 79, 0.2);
+    }
+
+    .cta-row a.secondary {
+      background: rgba(45, 106, 79, 0.08);
+      color: #2d6a4f;
+      border: 1px solid rgba(45, 106, 79, 0.2);
+    }
+
+    .cta-row a:hover {
+      transform: translateY(-2px);
+    }
+
+    .empty-recents {
+      text-align: center;
+      padding: 80px 20px;
+      border-radius: 16px;
+      background: rgba(45, 106, 79, 0.05);
+    }
+
+    .empty-recents span {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .profile-header {
+        flex-direction: column;
+      }
+      .profile-card {
+        width: 100%;
+      }
+      .recents-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="header-nav">
+    <div class="nav-container">
+      <div class="logo">
+        <span class="logo-icon">🍃</span>
+        <span class="logo-text">WildID</span>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/discovery" class="nav-link">Discovery</a>
+        {% if current_user %}
+          <div class="profile-menu">
+            <a href="/profile" class="nav-link profile-toggle active" data-transition="true">Profile</a>
+            <div class="profile-dropdown">
+              <a href="/profile" data-transition="true">View Profile</a>
+              <a href="/history" data-transition="true">History</a>
+              <hr class="dropdown-divider" />
+              <form action="/auth/logout" method="post" class="logout-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit">Sign Out</button>
+              </form>
+            </div>
+          </div>
+        {% else %}
+          <a href="/auth/login" class="nav-link" data-transition="true">Sign In</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <div class="profile-container">
+    <div class="profile-header">
+      <div class="profile-card">
+        <h1>Welcome back, {{ current_user.email }}</h1>
+        <p>Explore your recent discoveries and keep track of your wildlife identifications.</p>
+
+        <div class="profile-metrics">
+          <div class="metric-tile">
+            <span>Total Identifications</span>
+            <strong>{{ total_identifications }}</strong>
+          </div>
+          <div class="metric-tile">
+            <span>Member Since</span>
+            <strong>{{ current_user.created_at.strftime('%b %d, %Y') }}</strong>
+          </div>
+          <div class="metric-tile">
+            <span>Last Login</span>
+            <strong>
+              {% if current_user.last_login %}
+                {{ current_user.last_login.strftime('%b %d, %Y') }}
+              {% else %}
+                Today
+              {% endif %}
+            </strong>
+          </div>
+        </div>
+
+        <div class="cta-row">
+          <a href="/discovery" class="primary" data-transition="true"><i class="fas fa-upload"></i> Start New Identification</a>
+          <a href="/history" class="secondary" data-transition="true"><i class="fas fa-clock"></i> View Full History</a>
+        </div>
+      </div>
+
+      {% if latest_identification %}
+      <div class="profile-card">
+        <h2 style="margin-top:0; color:#1f2937;">Most Recent Identification</h2>
+        <div style="margin-top:16px; display:flex; gap:16px; align-items:center;">
+          <div style="width:96px; height:96px; border-radius:12px; overflow:hidden; background:#f1f5f9;">
+            <img src="data:{{ latest_identification.image_mime }};base64,{{ latest_identification.image_data }}" alt="Recent identification" style="width:100%; height:100%; object-fit:cover;" />
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:20px; color:#0f172a;">{{ latest_identification.common_name or 'Unknown Species' }}</h3>
+            <p style="margin:4px 0 12px; color:#64748b;">{{ latest_identification.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+            <a href="{{ url_for('history_detail', identification_id=latest_identification.id) }}" class="secondary" data-transition="true" style="display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px;">View Details <i class="fas fa-arrow-right"></i></a>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <section class="recents-section">
+      <div class="recents-header">
+        <h2 style="margin:0; font-size:24px; color:#1f2937;">Recent Activity</h2>
+        <a href="/history" class="nav-link" data-transition="true" style="padding:8px 16px; border-radius:999px; background:rgba(45,106,79,0.08); color:#2d6a4f;">See All</a>
+      </div>
+
+      {% if recent_identifications %}
+      <div class="recents-list">
+        {% for identification in recent_identifications %}
+        <a href="{{ url_for('history_detail', identification_id=identification.id) }}" class="recent-card" data-transition="true">
+          <img src="data:{{ identification.image_mime }};base64,{{ identification.image_data }}" alt="{{ identification.common_name or 'Animal identification' }}" class="recent-image" />
+          <div class="recent-content">
+            <h3>{{ identification.common_name or 'Unknown Species' }}</h3>
+            {% if identification.species %}
+              <p>{{ identification.species }}</p>
+            {% endif %}
+            <div class="recent-meta">
+              <span>{{ identification.created_at.strftime('%b %d, %Y') }}</span>
+              {% if identification.confidence %}
+                <span>{{ identification.confidence|capitalize }} confidence</span>
+              {% endif %}
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-recents">
+        <span>🦉</span>
+        <h3>No identifications yet</h3>
+        <p>Once you upload images, your latest results will appear here for quick access.</p>
+        <a href="/discovery" class="primary" data-transition="true" style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; border-radius:999px; margin-top:12px;">Start identifying</a>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <footer>
+    <div class="footer-content">
+      <p>WildID • Wildlife Identification • Auto file cleanup • Interactive habitat mapping</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+

@@ -13,12 +13,13 @@ import tempfile
 import logging
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, g
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, g, abort
 from flask_cors import CORS
 from flask_session import Session
 from PIL import Image
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from sqlalchemy import inspect, text
 from security import SecurityManager
 from models import db, User, Identification
 from auth import AuthManager, mail
@@ -94,6 +95,23 @@ auth = AuthManager(app)
 # Create database tables
 with app.app_context():
     db.create_all()
+    try:
+        inspector = inspect(db.engine)
+        identification_columns = {column['name'] for column in inspector.get_columns('identifications')}
+        migrations = []
+        if 'user_feedback' not in identification_columns:
+            migrations.append("ALTER TABLE identifications ADD COLUMN user_feedback VARCHAR(20)")
+        if 'feedback_comment' not in identification_columns:
+            migrations.append("ALTER TABLE identifications ADD COLUMN feedback_comment TEXT")
+        if 'feedback_at' not in identification_columns:
+            migrations.append("ALTER TABLE identifications ADD COLUMN feedback_at TIMESTAMP")
+        for statement in migrations:
+            db.session.execute(text(statement))
+        if migrations:
+            db.session.commit()
+    except Exception as migration_error:
+        app.logger.error(f"Failed to ensure identifications columns: {migration_error}")
+        db.session.rollback()
 
 # Security headers
 @app.after_request
@@ -1018,6 +1036,68 @@ def history():
     return render_template('history.html', 
                          current_user=current_user, 
                          identifications=identifications)
+
+@app.route('/profile')
+def profile():
+    """Show account overview with recent identifications"""
+    current_user = auth.get_current_user()
+
+    if not current_user:
+        flash('Please sign in to view your profile', 'info')
+        return redirect(url_for('login'))
+
+    recent_identifications = (
+        Identification.query
+        .filter_by(user_id=current_user.id)
+        .order_by(Identification.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
+    total_identifications = Identification.query.filter_by(user_id=current_user.id).count()
+    latest_identification = recent_identifications[0] if recent_identifications else None
+
+    return render_template(
+        'profile.html',
+        current_user=current_user,
+        recent_identifications=recent_identifications,
+        total_identifications=total_identifications,
+        latest_identification=latest_identification
+    )
+
+@app.route('/history/<int:identification_id>')
+def history_detail(identification_id):
+    """Detailed view for a single identification"""
+    current_user = auth.get_current_user()
+
+    if not current_user:
+        flash('Please sign in to view identification details', 'info')
+        return redirect(url_for('login'))
+
+    identification = Identification.query.filter_by(
+        id=identification_id,
+        user_id=current_user.id
+    ).first()
+
+    if not identification:
+        abort(404)
+
+    result_data = identification.get_result_json() or {
+        'species': identification.species,
+        'common_name': identification.common_name,
+        'animal_type': identification.animal_type,
+        'conservation_status': identification.conservation_status,
+        'confidence': identification.confidence,
+        'description': identification.description,
+        'notes': identification.notes,
+    }
+
+    return render_template(
+        'history_detail.html',
+        current_user=current_user,
+        identification=identification,
+        result=result_data
+    )
 
 @app.route('/api/feedback', methods=['POST'])
 def submit_feedback():

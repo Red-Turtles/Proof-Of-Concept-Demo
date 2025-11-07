@@ -44,6 +44,10 @@
       overflow: hidden;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: inherit;
     }
     
     .history-card:hover {
@@ -210,12 +214,21 @@
       <div class="nav-links">
         <a href="/" class="nav-link">Home</a>
         <a href="/discovery" class="nav-link">Discovery</a>
-        <a href="/history" class="nav-link active">History</a>
         {% if current_user %}
-          <form action="/auth/logout" method="post" class="logout-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <button type="submit" class="nav-link logout-button">Sign Out</button>
-          </form>
+          <div class="profile-menu">
+            <a href="/profile" class="nav-link profile-toggle" data-transition="true">Profile</a>
+            <div class="profile-dropdown">
+              <a href="/profile" data-transition="true">View Profile</a>
+              <a href="/history" data-transition="true">History</a>
+              <hr class="dropdown-divider" />
+              <form action="/auth/logout" method="post" class="logout-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit">Sign Out</button>
+              </form>
+            </div>
+          </div>
+        {% else %}
+          <a href="/auth/login" class="nav-link" data-transition="true">Sign In</a>
         {% endif %}
       </div>
     </div>
@@ -242,7 +255,7 @@
     {% if identifications %}
       <div class="history-grid">
         {% for identification in identifications %}
-          <div class="history-card">
+          <a href="{{ url_for('history_detail', identification_id=identification.id) }}" class="history-card" data-transition="true">
             {% if identification.image_data %}
               <img 
                 src="data:{{ identification.image_mime }};base64,{{ identification.image_data }}" 
@@ -289,7 +302,7 @@
                 {{ identification.created_at.strftime('%B %d, %Y at %I:%M %p') }}
               </div>
             </div>
-          </div>
+          </a>
         {% endfor %}
       </div>
     {% else %}
