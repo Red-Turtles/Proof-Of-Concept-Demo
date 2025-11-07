@@ -1,0 +1,66 @@
+flowchart LR
+    classDef client fill:#0ea5e9,stroke:#0369a1,color:#0f172a,font-weight:bold;
+    classDef flask fill:#6366f1,stroke:#312e81,color:#f8fafc;
+    classDef security fill:#f97316,stroke:#c2410c,color:#1f2937;
+    classDef data fill:#22c55e,stroke:#15803d,color:#052e16;
+    classDef external fill:#facc15,stroke:#ca8a04,color:#713f12;
+    classDef storage fill:#a855f7,stroke:#6b21a8,color:#faf5ff;
+
+    subgraph Client
+        Browser[Browser Session\nCSRF token + cookies]:::client
+    end
+
+    subgraph Flask_App[Flask Application]
+        Controller[Routes & Controllers\n`app.py`]:::flask
+        Templates[Templates & Static JS\n`templates/` & `static/`]:::flask
+
+        subgraph Security_Layer[Security Layer]
+            SecurityMgr[SecurityManager\nRate limiting & CAPTCHA\n`security.py`]:::security
+            CSRFGuard[CSRF Middleware\nbefore_request]:::security
+            CSPHeaders[CSP & Response Headers\n`add_security_headers`]:::security
+        end
+
+        subgraph Auth_Layer[Authentication Layer]
+            AuthMgr[AuthManager\nMagic links & sessions\n`auth.py`]:::flask
+        end
+
+        subgraph Services[Domain Services]
+            Identify[Image Identification Pipeline\nTogether.ai prompt & parsing]:::flask
+            HistorySvc[Identification History & Map Data\n`models.py`]:::flask
+            FeedbackSvc[Feedback API `/api/feedback`]:::flask
+        end
+    end
+
+    subgraph DataStores[Data & State]
+        SQLite[(SQLite / DATABASE_URL)]:::storage
+        Sessions[(Filesystem Session Store)]:::storage
+        TempFiles(((Secure Temp Files))):::storage
+    end
+
+    TogetherAI[[Together.ai Vision API]]:::external
+    Mail[[SMTP / Mailhog\nFlask-Mail]]:::external
+    Maps[[OpenStreetMap Tiles]]:::external
+
+    Browser -->|HTTP requests| Controller
+    Controller --> Templates
+    Templates -->|Rendered HTML + JS| Browser
+
+    Controller --> SecurityMgr
+    SecurityMgr --> Sessions
+    Controller --> CSRFGuard
+    Controller --> CSPHeaders
+
+    Controller --> AuthMgr
+    AuthMgr --> Mail
+
+    Controller --> Identify
+    Identify --> TogetherAI
+    Identify --> TempFiles
+
+    Controller --> HistorySvc
+    Controller --> FeedbackSvc
+    HistorySvc --> SQLite
+    FeedbackSvc --> SQLite
+
+    Identify --> Maps
+    Browser --> Maps
