@@ -142,6 +142,118 @@ body.is-transitioning {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.badges-section {
+  margin-top: 48px;
+}
+
+.badges-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.badges-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #1f2937;
+}
+
+.badges-header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.badge-card {
+  background: white;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.badge-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+}
+
+.badge-card.locked {
+  opacity: 0.65;
+}
+
+.badge-icon {
+  font-size: 36px;
+}
+
+.badge-info h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.badge-info p {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 14px;
+}
+
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-status.earned {
+  background: rgba(45, 106, 79, 0.12);
+  color: #2d6a4f;
+}
+
+.badge-status.locked {
+  background: rgba(15, 23, 42, 0.08);
+  color: #475569;
+}
+
+.badge-progress {
+  margin-top: auto;
+}
+
+.badge-progress span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.badge-progress-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.badge-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #34d399, #10b981);
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+
 
 .nav-link::after,
 .logout-button::after {

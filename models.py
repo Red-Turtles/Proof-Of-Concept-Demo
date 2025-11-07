@@ -89,6 +89,39 @@ class Identification(db.Model):
                 return {}
         return {}
 
+
+class UserBadge(db.Model):
+    """Badges earned by users for achievements"""
+    __tablename__ = 'user_badges'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    badge_key = db.Column(db.String(64), nullable=False)
+    badge_name = db.Column(db.String(120), nullable=False)
+    badge_description = db.Column(db.String(255))
+    badge_icon = db.Column(db.String(8), nullable=False, default='🏅')
+    awarded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    metadata_json = db.Column(db.Text)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'badge_key', name='uq_user_badge'),
+    )
+
+    def __repr__(self):
+        return f'<UserBadge {self.badge_key} for user {self.user_id}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'badge_key': self.badge_key,
+            'badge_name': self.badge_name,
+            'badge_description': self.badge_description,
+            'badge_icon': self.badge_icon,
+            'awarded_at': self.awarded_at.isoformat() if self.awarded_at else None,
+            'metadata': self.metadata_json
+        }
+
 class LoginToken(db.Model):
     """Model to store magic link tokens for passwordless login"""
     __tablename__ = 'login_tokens'

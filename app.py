@@ -19,9 +19,9 @@ from flask_session import Session
 from PIL import Image
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, func
 from security import SecurityManager
-from models import db, User, Identification
+from models import db, User, Identification, UserBadge
 from auth import AuthManager, mail
 
 # Load environment variables
@@ -215,6 +215,50 @@ app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16777216)
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
 
+# Badge configuration
+BADGE_DEFINITIONS = [
+    {
+        'key': 'first_identification',
+        'name': 'First Discovery',
+        'description': 'Complete your first wildlife identification.',
+        'icon': '🌱',
+        'type': 'total_identifications',
+        'threshold': 1
+    },
+    {
+        'key': 'trailblazer',
+        'name': 'Trailblazer',
+        'description': 'Complete five wildlife identifications.',
+        'icon': '🔥',
+        'type': 'total_identifications',
+        'threshold': 5
+    },
+    {
+        'key': 'wildlife_champion',
+        'name': 'Wildlife Champion',
+        'description': 'Complete ten wildlife identifications.',
+        'icon': '🏆',
+        'type': 'total_identifications',
+        'threshold': 10
+    },
+    {
+        'key': 'species_sleuth',
+        'name': 'Species Sleuth',
+        'description': 'Identify three unique species.',
+        'icon': '🕵️',
+        'type': 'unique_species',
+        'threshold': 3
+    },
+    {
+        'key': 'habitat_hopper',
+        'name': 'Habitat Hopper',
+        'description': 'Identify animals from three different animal types.',
+        'icon': '🦋',
+        'type': 'animal_types',
+        'threshold': 3
+    }
+]
+
 # Create upload directory if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -222,6 +266,106 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def calculate_user_identification_stats(user_id):
+    """Aggregate identification stats used for achievements."""
+    total_identifications = db.session.query(func.count(Identification.id)).filter_by(user_id=user_id).scalar() or 0
+
+    unique_species = (
+        db.session.query(func.count(func.distinct(Identification.species)))
+        .filter(
+            Identification.user_id == user_id,
+            Identification.species.isnot(None),
+            Identification.species != ''
+        )
+        .scalar()
+    ) or 0
+
+    unique_animal_types = (
+        db.session.query(func.count(func.distinct(Identification.animal_type)))
+        .filter(
+            Identification.user_id == user_id,
+            Identification.animal_type.isnot(None),
+            Identification.animal_type != ''
+        )
+        .scalar()
+    ) or 0
+
+    return {
+        'total_identifications': total_identifications,
+        'unique_species': unique_species,
+        'animal_types': unique_animal_types
+    }
+
+
+def evaluate_badge_progress(badge_definition, stats):
+    metric_key = badge_definition['type']
+    current_value = stats.get(metric_key, 0)
+    return current_value, current_value >= badge_definition['threshold']
+
+
+def award_badges_for_user(user):
+    """Check badge criteria for a user and award new badges."""
+    stats = calculate_user_identification_stats(user.id)
+    existing_badges = {
+        badge.badge_key: badge for badge in UserBadge.query.filter_by(user_id=user.id)
+    }
+
+    new_badges = []
+    for badge_definition in BADGE_DEFINITIONS:
+        if badge_definition['key'] in existing_badges:
+            continue
+
+        progress_value, achieved = evaluate_badge_progress(badge_definition, stats)
+        if achieved:
+            badge = UserBadge(
+                user_id=user.id,
+                badge_key=badge_definition['key'],
+                badge_name=badge_definition['name'],
+                badge_description=badge_definition['description'],
+                badge_icon=badge_definition['icon'],
+                metadata_json=json.dumps({
+                    'progress_value': progress_value,
+                    'threshold': badge_definition['threshold']
+                })
+            )
+            db.session.add(badge)
+            new_badges.append(badge)
+
+    if new_badges:
+        db.session.commit()
+
+    return new_badges
+
+
+def build_badge_overview(user_id):
+    stats = calculate_user_identification_stats(user_id)
+    awarded_badges = {
+        badge.badge_key: badge for badge in UserBadge.query.filter_by(user_id=user_id)
+    }
+
+    overview = []
+    for definition in BADGE_DEFINITIONS:
+        progress_value, achieved = evaluate_badge_progress(definition, stats)
+        threshold = definition['threshold']
+        ratio = min(progress_value / threshold if threshold else 1, 1.0)
+        award = awarded_badges.get(definition['key'])
+
+        overview.append({
+            'key': definition['key'],
+            'name': definition['name'],
+            'description': definition['description'],
+            'icon': definition['icon'],
+            'is_earned': bool(award),
+            'awarded_at': award.awarded_at if award else None,
+            'progress_value': progress_value,
+            'threshold': threshold,
+            'progress_ratio': ratio,
+            'remaining': max(threshold - progress_value, 0)
+        })
+
+    return overview, stats
 
 def create_secure_temp_file(file):
     """Create a secure temporary file with randomized name"""
@@ -1057,12 +1201,16 @@ def profile():
     total_identifications = Identification.query.filter_by(user_id=current_user.id).count()
     latest_identification = recent_identifications[0] if recent_identifications else None
 
+    badge_overview, badge_stats = build_badge_overview(current_user.id)
+
     return render_template(
         'profile.html',
         current_user=current_user,
         recent_identifications=recent_identifications,
         total_identifications=total_identifications,
-        latest_identification=latest_identification
+        latest_identification=latest_identification,
+        badge_overview=badge_overview,
+        badge_stats=badge_stats
     )
 
 @app.route('/history/<int:identification_id>')
@@ -1314,6 +1462,10 @@ def upload_file():
                 db.session.commit()
                 identification_id = identification.id
                 logger.info(f"Saved identification to history for user {current_user.email}")
+
+                new_badges = award_badges_for_user(current_user)
+                for badge in new_badges:
+                    flash(f"{badge.badge_icon} New badge unlocked: {badge.badge_name}!", 'success')
             except Exception as e:
                 logger.error(f"Error saving identification to history: {str(e)}")
                 # Don't fail the request if history save fails
