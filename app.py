@@ -42,9 +42,13 @@ app.config['SESSION_FILE_THRESHOLD'] = 100
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'true').lower() == 'true' if not app.debug else os.getenv('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=int(os.getenv('PERMANENT_SESSION_DAYS', '7')))
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=int(os.getenv('PERMANENT_SESSION_DAYS', '30')))
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https' if not app.debug else 'http')
 app.config['REMEMBER_COOKIE_SECURE'] = os.getenv('REMEMBER_COOKIE_SECURE', 'true').lower() == 'true' if not app.debug else os.getenv('REMEMBER_COOKIE_SECURE', 'false').lower() == 'true'
+app.config.setdefault('REMEMBER_COOKIE_NAME', 'wildid_remember')
+app.config.setdefault('REMEMBER_COOKIE_DURATION', 60 * 60 * 24 * 30)
+app.config.setdefault('REMEMBER_COOKIE_SAMESITE', app.config.get('SESSION_COOKIE_SAMESITE', 'Lax'))
 
 
 def _parse_csv_env(var_name, fallback=None):
@@ -112,6 +116,10 @@ with app.app_context():
     except Exception as migration_error:
         app.logger.error(f"Failed to ensure identifications columns: {migration_error}")
         db.session.rollback()
+
+@app.before_request
+def restore_user_from_cookie():
+    auth.ensure_user_from_remember_cookie()
 
 # Security headers
 @app.after_request
@@ -1152,16 +1160,20 @@ def verify_magic_link():
     
     # Log user in
     auth.login_user(user)
+    response = redirect(url_for('index'))
+    auth.set_remember_cookie(response, user)
     
     flash(f'Welcome back, {email}!', 'success')
-    return redirect(url_for('index'))
+    return response
 
 @app.route('/auth/logout', methods=['POST'])
 def logout():
     """Log out the current user"""
     auth.logout_user()
+    response = redirect(url_for('index'))
+    auth.clear_remember_cookie(response)
     flash('You have been logged out successfully', 'success')
-    return redirect(url_for('index'))
+    return response
 
 @app.route('/history')
 def history():
