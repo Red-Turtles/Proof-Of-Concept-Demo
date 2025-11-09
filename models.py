@@ -161,10 +161,15 @@ class CommunityPost(db.Model):
     image_mime = db.Column(db.String(50), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    location_name = db.Column(db.String(255))
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+    location_source = db.Column(db.String(20))
 
     likes = db.relationship('PostLike', backref='post', lazy='dynamic', cascade='all, delete-orphan')
     bookmarks = db.relationship('PostBookmark', backref='post', lazy='dynamic', cascade='all, delete-orphan')
     comments = db.relationship('PostComment', backref='post', lazy='dynamic', cascade='all, delete-orphan')
+    shares = db.relationship('PostShare', backref='post', lazy='dynamic', cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<CommunityPost {self.id}: {self.title}>'
@@ -177,6 +182,9 @@ class CommunityPost(db.Model):
 
     def comment_count(self):
         return self.comments.filter_by(is_deleted=False).count()
+
+    def share_count(self):
+        return self.shares.count()
 
 
 class PostLike(db.Model):
@@ -221,4 +229,17 @@ class PostComment(db.Model):
 
     def __repr__(self):
         return f'<PostComment {self.id} on post {self.post_id}>'
+
+
+class PostShare(db.Model):
+    """Track share events for community posts"""
+    __tablename__ = 'post_shares'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('community_posts.id', ondelete='CASCADE'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f'<PostShare {self.id} on post {self.post_id}>'
 

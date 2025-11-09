@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="csrf-token" content="{{ csrf_token() }}" />
-  <title>Share a Sighting • WildID Community</title>
+  <title>Edit Sighting - WildID Community</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pIVpCq5/7Y6F+h4Jk3EL5PyB4tS6Tn6kki0eM7F9j1WFzsDmJx7HwXKc7aYidIyh67tKi37gZoe1zYx4V5lrkg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
@@ -18,7 +18,7 @@
       <div class="nav-links">
         <a href="/" class="nav-link" data-transition="true">Home</a>
         <a href="/discovery" class="nav-link" data-transition="true">Discovery</a>
-        <a href="/community" class="nav-link" data-transition="true">Community</a>
+        <a href="/community" class="nav-link active" data-transition="true">Community</a>
         <a href="/community/map" class="nav-link" data-transition="true">Community Map</a>
         <a href="/quests" class="nav-link" data-transition="true">Quests</a>
         {% if current_user %}
@@ -43,35 +43,40 @@
 
   <main class="community-compose">
     <section class="compose-card">
-      <h1>Share a new sighting</h1>
-      <p class="compose-subtitle">Upload a photo, add a caption, and inspire the WildID community.</p>
+      <h1>Edit your sighting</h1>
+      <p class="compose-subtitle">Update the details of your community submission. Changes go live once you save.</p>
 
-      <form action="{{ url_for('community_new') }}" method="post" enctype="multipart/form-data" class="compose-form">
+      <form action="{{ url_for('community_edit', post_id=post.id) }}" method="post" enctype="multipart/form-data" class="compose-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
         <div class="form-group">
           <label for="title">Title <span>(optional)</span></label>
-          <input type="text" id="title" name="title" maxlength="140" placeholder="e.g. Curious Red Fox at Sunset" />
+          <input type="text" id="title" name="title" maxlength="140" value="{{ post.title or '' }}" placeholder="e.g. Curious Red Fox at Sunset" />
         </div>
 
         <div class="form-group">
           <label for="location_name">Location <span>(optional)</span></label>
-          <input type="text" id="location_name" name="location_name" maxlength="180" placeholder="e.g. Serengeti National Park, Tanzania or 37.8651, -119.5383" />
-          <p class="hint">We’ll place your sighting on the community map. Leave blank if you’re unsure—we can attempt to estimate it.</p>
+          <input type="text" id="location_name" name="location_name" maxlength="180" value="{{ post.location_name or '' }}" placeholder="e.g. Serengeti National Park, Tanzania" />
+          <p class="hint">Updating the location will refresh the pin on the community map. Leave blank to keep the current location.</p>
         </div>
 
         <div class="form-group">
           <label for="species">Species <span>(optional)</span></label>
-          <input type="text" id="species" name="species" maxlength="120" placeholder="e.g. Vulpes vulpes" />
+          <input type="text" id="species" name="species" maxlength="120" value="{{ post.species or '' }}" placeholder="e.g. Vulpes vulpes" />
         </div>
 
         <div class="form-group">
           <label for="description">Description</label>
-          <textarea id="description" name="description" rows="5" maxlength="1200" placeholder="Tell the community about your sighting..."></textarea>
+          <textarea id="description" name="description" rows="5" maxlength="1200" placeholder="Tell the community about your sighting...">{{ post.description or '' }}</textarea>
         </div>
 
         <div class="form-group">
-          <label for="image">Upload Photo</label>
+          <label>Current Photo</label>
+          <img src="{{ current_image_url }}" alt="{{ post.title or 'Current photo' }}" style="max-width:100%; border-radius:12px; margin-bottom:12px;" />
+        </div>
+
+        <div class="form-group">
+          <label for="image">Replace Photo <span>(optional)</span></label>
           <label class="upload-area" for="image">
             <div class="upload-content">
               <div class="upload-icon">📸</div>
@@ -100,18 +105,18 @@
                   0
                 </span>
               </div>
-              <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.gif,.bmp,.webp" required />
+              <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.gif,.bmp,.webp" />
             </div>
           </label>
         </div>
 
         <div class="compose-actions">
-          <a href="{{ url_for('community_feed') }}" class="secondary" data-transition="true">Cancel</a>
+          <a href="{{ url_for('community_detail', post_id=post.id) }}" class="secondary" data-transition="true">Cancel</a>
           <button type="submit" class="primary">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M2 21l21-9L2 3v7l15 2-15 2z" fill="currentColor"/>
+              <path d="M17 3H5a2 2 0 0 0-2 2v14l4-4h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-3 9H7v-2h7v2zm3-4H7V6h10v2z" fill="currentColor"/>
             </svg>
-            Share with Community
+            Save changes
           </button>
         </div>
       </form>

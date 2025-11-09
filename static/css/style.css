@@ -140,6 +140,8 @@
   font-weight: 600;
   text-decoration: none;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: none;
+  cursor: pointer;
 }
 
 .hero-btn.primary {
@@ -154,8 +156,24 @@
   border: 1px solid rgba(45, 106, 79, 0.14);
 }
 
+.hero-btn.tertiary {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+}
+
+.hero-btn.danger {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.28);
+}
+
 .hero-btn:hover {
   transform: translateY(-2px);
+}
+
+.hero-btn.danger:hover {
+  background: rgba(220, 38, 38, 0.2);
 }
 
 .community-hero__stats {
@@ -348,12 +366,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   font-size: 13px;
-  color: #94a3b8;
-}
-
-.community-card__footer span i {
-  margin-right: 6px;
+  color: #475569;
 }
 
 .community-card__footer .view-post {
@@ -365,6 +381,49 @@
 
 .community-card__footer .view-post:hover {
   color: #1f4534;
+}
+
+.location-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1e3a8a;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.location-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.location-source-badge {
+  background: rgba(250, 204, 21, 0.2);
+  color: #b45309;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.map-link:hover {
+  color: #1d4ed8;
 }
 
 .community-empty {
@@ -742,6 +801,167 @@ body.community-page footer {
 
 body.is-transitioning {
   overflow: hidden;
+}
+
+.community-map-wrapper {
+  max-width: 1200px;
+  margin: 120px auto 60px;
+  padding: 0 24px 60px;
+  width: 100%;
+}
+
+.community-map-hero {
+  background: linear-gradient(120deg, rgba(37, 99, 235, 0.12), rgba(29, 78, 216, 0.08));
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.community-map-hero h1 {
+  margin: 0;
+  font-size: 32px;
+  color: #0f172a;
+}
+
+.community-map-hero p {
+  margin: 0;
+  color: #475569;
+  max-width: 720px;
+}
+
+#community-map {
+  width: 100%;
+  min-height: 520px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+  background: #e2e8f0;
+}
+
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.leaflet-popup-content {
+  width: 260px;
+}
+
+.leaflet-popup-content .popup-preview {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  max-height: 140px;
+  object-fit: cover;
+}
+
+.leaflet-popup-content h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.leaflet-popup-content p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.leaflet-popup-content a {
+  text-decoration: none;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.map-empty-state {
+  text-align: center;
+  padding: 60px 24px;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 16px;
+  margin-top: 24px;
+}
+
+.quest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.quest-card {
+  background: white;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quest-card--earned {
+  border: 2px solid rgba(34, 197, 94, 0.35);
+  box-shadow: 0 20px 40px rgba(34, 197, 94, 0.18);
+}
+
+.quest-card header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.quest-icon {
+  font-size: 36px;
+}
+
+.quest-card h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.quest-status {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  color: #334155;
+}
+
+.quest-status--active {
+  background: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+}
+
+.quest-description {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.quest-requirements {
+  margin: 0;
+  padding-left: 20px;
+  color: #1f2937;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quest-requirements strong {
+  color: #0f172a;
+}
+
+.quest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 /* Header Navigation */
@@ -2997,6 +3217,19 @@ img.preview {
 .community-empty a svg,
 .community-card__overlay svg,
 .back-link svg,
-.related-posts .community-card__footer svg {
+.related-posts .community-card__footer svg,
+.map-link svg,
+.location-line svg {
   margin-right: 6px;
+}
+
+.detail-actions-inline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.detail-actions-inline form {
+  margin: 0;
 }

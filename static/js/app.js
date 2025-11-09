@@ -106,12 +106,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Get elements
-    const fileInput = document.getElementById('file-input');
+    const fileInput = document.getElementById('file-input') || document.querySelector('.compose-form input[type="file"]');
     const uploadArea = document.querySelector('.upload-area');
     const fileInfo = document.getElementById('file-info');
     const fileName = document.getElementById('file-name');
     const removeFileBtn = document.getElementById('remove-file');
-    const submitBtn = document.getElementById('submit-btn');
+    const submitBtn = document.getElementById('submit-btn') || document.querySelector('.compose-form button.primary[type="submit"]');
     const communityUploadName = document.getElementById('upload-filename');
     
     console.log('Elements found:', {
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Initialize submit button as disabled
-    if (submitBtn) {
+    if (submitBtn && submitBtn.id === 'submit-btn') {
         submitBtn.disabled = true;
         console.log('Submit button initialized as disabled');
     }
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fileInfo) {
             fileInfo.style.display = 'flex';
         }
-        if (submitBtn) {
+        if (submitBtn && submitBtn.id === 'submit-btn') {
             submitBtn.disabled = false;
             console.log('Submit button enabled');
         }
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (communityUploadName) {
             communityUploadName.textContent = 'No file selected';
         }
-        if (submitBtn) {
+        if (submitBtn && submitBtn.id === 'submit-btn') {
             submitBtn.disabled = true;
             console.log('Submit button disabled');
         }
@@ -271,6 +271,46 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll(selector).forEach((element) => {
             element.textContent = value;
         });
+    }
+
+    function updateShareCounts(apiUrl, value) {
+        document.querySelectorAll(`[data-share-api="${apiUrl}"] .count`).forEach((element) => {
+            element.textContent = value;
+        });
+        updateCountsForSelector('.share-count', value);
+    }
+
+    async function recordShare(button) {
+        const apiUrl = button.getAttribute('data-share-api');
+        if (!apiUrl) {
+            return null;
+        }
+
+        try {
+            const csrfToken = window.csrfToken || csrfMeta?.getAttribute('content') || '';
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({})
+            });
+
+            if (!response.ok) {
+                console.warn('Share logging failed', response.status);
+                return null;
+            }
+
+            const data = await response.json();
+            if (data.success && data.counts && data.counts.shares !== undefined) {
+                updateShareCounts(apiUrl, data.counts.shares);
+            }
+            return data;
+        } catch (error) {
+            console.error('Error recording share', error);
+            return null;
+        }
     }
 
     function handleCommunityAction(button, url, actionType) {
@@ -362,6 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', async (event) => {
             event.preventDefault();
             const shareUrl = button.getAttribute('data-share-url');
+            const apiUrl = button.getAttribute('data-share-api');
             if (!shareUrl) {
                 return;
             }
@@ -372,11 +413,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         title: 'WildID Community Sighting',
                         url: shareUrl
                     });
+                    await recordShare(button);
                 } else if (navigator.clipboard) {
                     await navigator.clipboard.writeText(shareUrl);
+                    await recordShare(button);
                     window.alert('Link copied to clipboard!');
                 } else {
                     window.prompt('Copy this link', shareUrl);
+                    await recordShare(button);
                 }
             } catch (error) {
                 console.error('Share failed', error);
