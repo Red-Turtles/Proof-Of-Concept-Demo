@@ -6,8 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <title>WildID Community Map</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pIVpCq5/7Y6F+h4Jk3EL5PyB4tS6Tn6kki0eM7F9j1WFzsDmJx7HwXKc7aYidIyh67tKi37gZoe1zYx4V5lrkg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha512-p2cJufNfFgr5u07MxBq74VwE7Hk9u0V5H4ty1cdq9VHtV6nRvWmvMRGsiE9z1FMvx6bMpiKFF9volGg5ec5Isg==" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body class="community-page community-map-page">
   <nav class="header-nav">
@@ -82,8 +81,8 @@
     </div>
   </footer>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha512-vI8ie2G9A+4WXTmBMWentMUR3pvN8MPmMXxMvmP0xSg6u40qCMgfHdCqkfNNpJBbGAbI3il2PASi6DPd7oUH7Q==" crossorigin=""></script>
-  <script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script nonce="{{ csp_nonce }}">
     const mapElement = document.getElementById('community-map');
     const mapPosts = {{ map_posts|tojson }};
     const focusId = {{ focus_id or 'null' }};
@@ -96,26 +95,54 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
-    if (!mapElement) {
-      console.warn('Community map element missing.');
-    } else if (typeof L === 'undefined') {
-      mapElement.innerHTML = '<div class="map-empty-state"><h2>Map failed to load</h2><p>Please check your internet connection and try again.</p></div>';
-      console.error('Leaflet library failed to load. Map cannot be rendered.');
-    } else if (mapPosts.length) {
-      const map = L.map('community-map', { scrollWheelZoom: true });
-      const bounds = [];
+    window.addEventListener('load', () => {
+      try {
+      if (!mapElement) {
+        console.warn('Community map element missing.');
+        return;
+      }
+
+      if (typeof L === 'undefined') {
+        mapElement.innerHTML = '<div class="map-empty-state"><h2>Map failed to load</h2><p>Please check your internet connection and try again.</p></div>';
+        console.error('Leaflet library failed to load. Map cannot be rendered.');
+        return;
+      }
+
+      const normalizePosts = (posts) => posts.map((post) => ({
+        ...post,
+        latitude: Number(post.latitude),
+        longitude: Number(post.longitude)
+      }));
+
+      const postsWithCoords = normalizePosts(mapPosts || []).filter((post) =>
+        Number.isFinite(post.latitude) && Number.isFinite(post.longitude)
+      );
+
+      mapElement.innerHTML = '';
+      const map = L.map('community-map', { scrollWheelZoom: true }).setView([20, 0], 2);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18,
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
+      if (!postsWithCoords.length) {
+        const message = L.control({ position: 'topright' });
+        message.onAdd = function () {
+          const div = L.DomUtil.create('div');
+          div.innerHTML = '<div class="map-empty-state" style="box-shadow:none;"><span style="font-size:32px;">📍</span><h3>No mapped sightings yet</h3><p>Add a location when you share a sighting to place it here.</p></div>';
+          div.style.background = 'transparent';
+          div.style.pointerEvents = 'none';
+          return div;
+        };
+        message.addTo(map);
+        return;
+      }
+
+      const bounds = [];
       let focusMarker = null;
 
-      mapPosts.forEach((post) => {
-        if (post.latitude === null || post.longitude === null) {
-          return;
-        }
+      postsWithCoords.forEach((post) => {
         const marker = L.marker([post.latitude, post.longitude]).addTo(map);
         bounds.push([post.latitude, post.longitude]);
 
@@ -140,19 +167,21 @@
         map.fitBounds(bounds, { padding: [40, 40] });
       } else if (bounds.length === 1) {
         map.setView(bounds[0], 9);
-      } else {
-        map.setView([20, 0], 2);
       }
 
       setTimeout(() => {
         map.invalidateSize();
-      }, 150);
+      }, 200);
 
       if (focusMarker) {
         focusMarker.openPopup();
         map.setView(focusMarker.getLatLng(), 10);
       }
-    }
+      } catch (err) {
+        console.error('Failed to render community map', err);
+        mapElement.innerHTML = '<div class="map-empty-state"><h2>Unable to render the map</h2><p>Please open the browser console and share the error with us.</p></div>';
+      }
+    });
   </script>
 </body>
 </html>

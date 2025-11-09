@@ -190,7 +190,8 @@ def add_security_headers(response):
         "default-src 'self';",
         f"script-src {' '.join(script_sources)};",
         "style-src 'self' 'unsafe-inline' https://unpkg.com;",
-        "img-src 'self' data: https://*.tile.openstreetmap.org;"
+        "img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com;",
+        "connect-src 'self' https://unpkg.com;"
     ])
     response.headers['Content-Security-Policy'] = csp
     return response
@@ -377,6 +378,55 @@ BADGE_DEFINITIONS = [
         'threshold': 1,
         'target_common_name': 'bald eagle',
         'target_species': 'haliaeetus leucocephalus'
+    },
+    {
+        'key': 'quest_penguin_patrol',
+        'name': 'Penguin Patrol',
+        'description': 'Discover and identify a penguin species.',
+        'icon': '🐧',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'penguin'
+    },
+    {
+        'key': 'quest_shark_sentinel',
+        'name': 'Shark Sentinel',
+        'description': 'Log a sighting of a great white shark.',
+        'icon': '🦈',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'great white shark',
+        'target_species': 'carcharodon carcharias'
+    },
+    {
+        'key': 'quest_gorilla_guardian',
+        'name': 'Gorilla Guardian',
+        'description': 'Identify a mountain gorilla in its habitat.',
+        'icon': '🦍',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'gorilla',
+        'target_species': 'gorilla beringei'
+    },
+    {
+        'key': 'quest_red_panda_protector',
+        'name': 'Red Panda Protector',
+        'description': 'Track down the elusive red panda.',
+        'icon': '🦊',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'red panda',
+        'target_species': 'ailurus fulgens'
+    },
+    {
+        'key': 'quest_snow_leopard_seeker',
+        'name': 'Snow Leopard Seeker',
+        'description': 'Spot a snow leopard high in the mountains.',
+        'icon': '🐆',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'snow leopard',
+        'target_species': 'panthera uncia'
     }
 ]
 
