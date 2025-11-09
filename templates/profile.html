@@ -6,7 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <title>My Profile - WildID</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pIVpCq5/7Y6F+h4Jk3EL5PyB4tS6Tn6kki0eM7F9j1WFzsDmJx7HwXKc7aYidIyh67tKi37gZoe1zYx4V5lrkg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     .profile-container {
       max-width: 1200px;
@@ -255,8 +255,18 @@
         </div>
 
         <div class="cta-row">
-        <a href="/discovery" class="primary" data-transition="true"><i class="fas fa-upload"></i>Start New Identification</a>
-        <a href="/history" class="secondary" data-transition="true"><i class="fas fa-clock"></i>View Full History</a>
+        <a href="/discovery" class="primary" data-transition="true">
+          <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 20h14v-2H5v2zm7-16L5.33 12h3.67v4h6v-4h3.67L12 4z" fill="currentColor"/>
+          </svg>
+          Start New Identification
+        </a>
+        <a href="/history" class="secondary" data-transition="true">
+          <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h3v2h-3v3h-2v-3H8v-2h3V8h2v3z" fill="currentColor"/>
+          </svg>
+          View Full History
+        </a>
         </div>
       </div>
 
@@ -270,7 +280,12 @@
           <div>
             <h3 style="margin:0; font-size:20px; color:#0f172a;">{{ latest_identification.common_name or 'Unknown Species' }}</h3>
             <p style="margin:4px 0 12px; color:#64748b;">{{ latest_identification.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
-            <a href="{{ url_for('history_detail', identification_id=latest_identification.id) }}" class="secondary" data-transition="true" style="display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px;">View Details <i class="fas fa-arrow-right"></i></a>
+            <a href="{{ url_for('history_detail', identification_id=latest_identification.id) }}" class="secondary" data-transition="true" style="display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px;">
+              View Details
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m10 17 5-5-5-5v10z" fill="currentColor"/>
+              </svg>
+            </a>
           </div>
         </div>
       </div>
@@ -309,6 +324,96 @@
         <h3>No identifications yet</h3>
         <p>Once you upload images, your latest results will appear here for quick access.</p>
         <a href="/discovery" class="primary" data-transition="true" style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; border-radius:999px; margin-top:12px;">Start identifying</a>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="community-preview-container saved-preview">
+      <div class="community-header">
+        <div>
+          <h2>Saved Posts</h2>
+          <p>Posts you’ve bookmarked for later revisit.</p>
+        </div>
+        <div class="community-actions">
+          <a href="/community" class="secondary" data-transition="true">
+            <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M16 11a4 4 0 1 0-3.76-5.3 4 4 0 0 0-5.48 0A4 4 0 1 0 8 11c-4 0-7 2-7 5v3h22v-3c0-3-3-5-7-5z" fill="currentColor"/>
+            </svg>
+            Explore Community
+          </a>
+        </div>
+      </div>
+
+      {% if saved_highlights %}
+      <div class="community-grid">
+        {% for post in saved_highlights %}
+        <article class="community-card">
+          <div class="community-card__media">
+            <img src="{{ post.image_url }}" alt="{{ post.title or 'Saved community post' }}" />
+            <div class="community-card__overlay">
+              <button type="button"
+                      class="overlay-btn is-like {% if post.liked_by_me %}is-active{% endif %}"
+                      data-action="toggle-like"
+                      data-url="{{ url_for('community_toggle_like', post_id=post.id) }}">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+                </svg>
+                <span class="count">{{ post.likes }}</span>
+              </button>
+              <button type="button"
+                      class="overlay-btn is-bookmark {% if post.saved_by_me %}is-active{% endif %}"
+                      data-action="toggle-bookmark"
+                      data-url="{{ url_for('community_toggle_bookmark', post_id=post.id) }}">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 4a2 2 0 0 0-2 2v14l8-3.5 8 3.5V6a2 2 0 0 0-2-2H6z" fill="currentColor"/>
+                </svg>
+                <span class="count">{{ post.saves }}</span>
+              </button>
+              <button type="button"
+                      class="overlay-btn"
+                      data-share-url="{{ url_for('community_detail', post_id=post.id, _external=True) }}">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 8l-3-3-3 3h2v4h2V8h2z" fill="currentColor"/>
+                  <path d="M5 11v9h14v-9h2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9h2z" fill="currentColor"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="community-card__body">
+            <div class="community-card__title">
+              <h3>{{ post.title or 'Wildlife Sighting' }}</h3>
+              <span>@{{ post.author_username }}</span>
+            </div>
+            {% if post.description %}
+            <p class="community-card__excerpt">{{ post.description }}{% if post.description|length == 120 %}…{% endif %}</p>
+            {% endif %}
+            {% if post.species %}
+            <p class="community-card__meta">Species: <strong>{{ post.species }}</strong></p>
+            {% endif %}
+            <div class="community-card__footer">
+              <span>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h4v2h-6V7h2v6z" fill="currentColor"/>
+                </svg>
+                {{ post.posted_at }}
+              </span>
+              <a href="/community/{{ post.id }}" class="view-post" data-transition="true">View Post</a>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="community-empty">
+        <span>🔖</span>
+        <h3>No saved posts yet</h3>
+        <p>Bookmark the sightings you love to find them here.</p>
+        <a href="/community" class="secondary" data-transition="true" style="display:inline-flex; align-items:center; gap:8px; padding:12px 24px; border-radius:999px;">
+          <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 11a4 4 0 1 0-3.76-5.3 4 4 0 0 0-5.48 0A4 4 0 1 0 8 11c-4 0-7 2-7 5v3h22v-3c0-3-3-5-7-5z" fill="currentColor"/>
+          </svg>
+          Browse the community
+        </a>
       </div>
       {% endif %}
     </section>
@@ -366,7 +471,12 @@
       <form action="{{ url_for('update_username') }}" method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <input type="text" name="username" value="{{ current_user.username or '' }}" placeholder="Choose a username" minlength="3" maxlength="30" pattern="[A-Za-z0-9_]+" required />
-        <button type="submit" class="save-btn"><i class="fas fa-save"></i> Save Username</button>
+        <button type="submit" class="save-btn">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17 3H5a2 2 0 0 0-2 2v14l4-4h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-3 9H7v-2h7v2zm3-4H7V6h10v2z" fill="currentColor"/>
+          </svg>
+          Save Username
+        </button>
       </form>
       <p class="hint">Use 3–30 characters: letters, numbers, and underscores only. This name will appear on your community posts.</p>
     </div>
@@ -379,10 +489,16 @@
         </div>
         <div class="community-actions">
           <a href="/community" class="primary" data-transition="true">
-            <i class="fas fa-users"></i> Visit Community
+            <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M16 11a4 4 0 1 0-3.76-5.3 4 4 0 0 0-5.48 0A4 4 0 1 0 8 11c-4 0-7 2-7 5v3h22v-3c0-3-3-5-7-5z" fill="currentColor"/>
+            </svg>
+            Visit Community
           </a>
           <a href="/community/new" class="secondary" data-transition="true">
-            <i class="fas fa-plus-circle"></i> Share a Sighting
+            <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h3v2h-3v3h-2v-3H8v-2h3V8h2v3z" fill="currentColor"/>
+            </svg>
+            Share a Sighting
           </a>
         </div>
       </div>
@@ -394,21 +510,30 @@
             <img src="{{ post.image_url }}" alt="{{ post.title or 'Community post' }}" />
             <div class="community-card__overlay">
               <button type="button"
-                      class="overlay-btn {% if post.liked_by_me %}is-active{% endif %}"
+                      class="overlay-btn is-like {% if post.liked_by_me %}is-active{% endif %}"
                       data-action="toggle-like"
                       data-url="{{ url_for('community_toggle_like', post_id=post.id) }}">
-                <i class="fas fa-heart"></i><span class="count">{{ post.likes }}</span>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+                </svg>
+                <span class="count">{{ post.likes }}</span>
               </button>
               <button type="button"
                       class="overlay-btn is-bookmark {% if post.saved_by_me %}is-active{% endif %}"
                       data-action="toggle-bookmark"
                       data-url="{{ url_for('community_toggle_bookmark', post_id=post.id) }}">
-                <i class="fas fa-bookmark"></i><span class="count">{{ post.saves }}</span>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 4a2 2 0 0 0-2 2v14l8-3.5 8 3.5V6a2 2 0 0 0-2-2H6z" fill="currentColor"/>
+                </svg>
+                <span class="count">{{ post.saves }}</span>
               </button>
               <button type="button"
                       class="overlay-btn"
                       data-share-url="{{ url_for('community_detail', post_id=post.id, _external=True) }}">
-                <i class="fas fa-share"></i>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 8l-3-3-3 3h2v4h2V8h2z" fill="currentColor"/>
+                  <path d="M5 11v9h14v-9h2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9h2z" fill="currentColor"/>
+                </svg>
               </button>
             </div>
           </div>
@@ -424,7 +549,12 @@
             <p class="community-card__meta">Species: <strong>{{ post.species }}</strong></p>
             {% endif %}
             <div class="community-card__footer">
-              <span><i class="fas fa-clock"></i> {{ post.posted_at }}</span>
+              <span>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h4v2h-6V7h2v6z" fill="currentColor"/>
+                </svg>
+                {{ post.posted_at }}
+              </span>
               <a href="/community/{{ post.id }}" class="view-post" data-transition="true">View Post</a>
             </div>
           </div>
@@ -434,7 +564,12 @@
           <span>🌍</span>
           <h3>No community posts yet</h3>
           <p>Be the first to share your wildlife discoveries with the WildID community.</p>
-          <a href="/community/new" class="primary" data-transition="true"><i class="fas fa-plus-circle"></i> Share a Sighting</a>
+          <a href="/community/new" class="primary" data-transition="true">
+            <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h3v2h-3v3h-2v-3H8v-2h3V8h2v3z" fill="currentColor"/>
+            </svg>
+            Share a Sighting
+          </a>
         </div>
         {% endfor %}
       </div>
@@ -443,7 +578,12 @@
     <div class="profile-signout-wrapper">
       <form action="/auth/logout" method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <button type="submit" class="signout-btn"><i class="fas fa-sign-out-alt"></i>Sign Out</button>
+        <button type="submit" class="signout-btn">
+          <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 17v-2h4v-2h-4V9l-5 3 5 3zm-2-9V4h12v16H8v-4H6v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v4h2z" fill="currentColor"/>
+          </svg>
+          Sign Out
+        </button>
       </form>
     </div>
   </div>

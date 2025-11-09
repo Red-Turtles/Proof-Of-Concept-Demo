@@ -1317,6 +1317,16 @@ def profile():
     )
     community_highlights = [build_post_preview(post, current_user) for post in community_posts]
 
+    saved_posts = (
+        CommunityPost.query
+        .join(PostBookmark, PostBookmark.post_id == CommunityPost.id)
+        .filter(PostBookmark.user_id == current_user.id)
+        .order_by(PostBookmark.created_at.desc())
+        .limit(6)
+        .all()
+    )
+    saved_highlights = [build_post_preview(post, current_user) for post in saved_posts]
+
     display_name = get_display_name(current_user)
 
     return render_template(
@@ -1328,7 +1338,8 @@ def profile():
         badge_overview=badge_overview,
         badge_stats=badge_stats,
         display_name=display_name,
-        community_highlights=community_highlights
+        community_highlights=community_highlights,
+        saved_highlights=saved_highlights
     )
 
 

@@ -92,6 +92,10 @@
   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
 }
 
+.community-preview-container.saved-preview {
+  margin-top: 32px;
+}
+
 .community-feed {
   max-width: 1200px;
   margin: 120px auto 60px;
@@ -293,6 +297,11 @@
 
 .overlay-btn.is-bookmark {
   background: rgba(37, 99, 235, 0.65);
+}
+
+.overlay-btn.is-like {
+  background: rgba(220, 38, 38, 0.35);
+  color: #fee2e2;
 }
 
 .community-card__body {
@@ -505,7 +514,7 @@
 }
 
 .community-detail {
-  max-width: 1100px;
+  max-width: 920px;
   margin: 120px auto 80px;
   padding: 0 24px;
   display: grid;
@@ -521,13 +530,18 @@
 
 .detail-media {
   position: relative;
-  max-height: 540px;
+  overflow: hidden;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  background: #f1f5f9;
 }
 
 .detail-media img {
+  display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-height: 520px;
+  object-fit: contain;
 }
 
 .detail-actions {
@@ -662,12 +676,18 @@
 }
 
 .overlay-btn.is-active {
-  background: rgba(220, 38, 38, 0.85);
+  background: rgba(220, 38, 38, 0.65);
+}
+
+.overlay-btn.is-like.is-active {
+  background: rgba(185, 28, 28, 0.9);
+  color: #fff;
 }
 
 .overlay-btn.is-bookmark.is-active {
   background: rgba(2, 132, 199, 0.85);
 }
+
 :root {
   --dark-green: #1a4d3a;
   --medium-green: #2d6a4f;
@@ -680,6 +700,19 @@
   --slate: #1e293b;
 }
 
+svg.icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  vertical-align: middle;
+  fill: currentColor;
+}
+
+.icon-lg {
+  width: 20px;
+  height: 20px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -690,6 +723,21 @@ body {
   background: var(--white);
   color: var(--black);
   line-height: 1.6;
+}
+
+body.community-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+body.community-page main.community-feed {
+  flex: 1 0 auto;
+  width: 100%;
+}
+
+body.community-page footer {
+  margin-top: auto;
 }
 
 body.is-transitioning {
@@ -2908,4 +2956,47 @@ img.preview {
   font-size: 13px;
   color: #24563d;
   font-weight: 600;
+}
+
+.compose-form .upload-actions {
+  display: flex;
+  gap: 16px;
+  color: #1f2937;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.compose-form .upload-actions span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  color: #1f2937;
+}
+
+.compose-form .upload-actions svg {
+  fill: #2d6a4f;
+}
+
+.overlay-btn svg {
+  margin-right: 6px;
+}
+
+.community-card__footer svg,
+.detail-stats svg,
+.hero-btn svg,
+.compose-form .upload-actions svg,
+.detail-header svg,
+.comment-form button svg,
+.community-actions svg,
+.pagination svg,
+.cta-row svg,
+.profile-signout-wrapper svg,
+.community-empty a svg,
+.community-card__overlay svg,
+.back-link svg,
+.related-posts .community-card__footer svg {
+  margin-right: 6px;
 }

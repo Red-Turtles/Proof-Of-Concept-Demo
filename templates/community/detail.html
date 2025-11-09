@@ -6,7 +6,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <title>{{ post.title }} • WildID Community</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pIVpCq5/7Y6F+h4Jk3EL5PyB4tS6Tn6kki0eM7F9j1WFzsDmJx7HwXKc7aYidIyh67tKi37gZoe1zYx4V5lrkg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
   <nav class="header-nav">
@@ -45,21 +45,30 @@
         <img src="{{ post.image_url }}" alt="{{ post.title }}" />
         <div class="detail-actions">
           <button type="button"
-                  class="overlay-btn {% if post.liked_by_me %}is-active{% endif %}"
+                  class="overlay-btn is-like {% if post.liked_by_me %}is-active{% endif %}"
                   data-action="toggle-like"
                   data-url="{{ url_for('community_toggle_like', post_id=post.id) }}">
-            <i class="fas fa-heart"></i><span class="count">{{ post.likes }}</span>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+            </svg>
+            <span class="count">{{ post.likes }}</span>
           </button>
           <button type="button"
                   class="overlay-btn is-bookmark {% if post.saved_by_me %}is-active{% endif %}"
                   data-action="toggle-bookmark"
                   data-url="{{ url_for('community_toggle_bookmark', post_id=post.id) }}">
-            <i class="fas fa-bookmark"></i><span class="count">{{ post.saves }}</span>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 4a2 2 0 0 0-2 2v14l8-3.5 8 3.5V6a2 2 0 0 0-2-2H6z" fill="currentColor"/>
+            </svg>
+            <span class="count">{{ post.saves }}</span>
           </button>
           <button type="button"
                   class="overlay-btn"
                   data-share-url="{{ post.share_url }}">
-            <i class="fas fa-share"></i>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 8l-3-3-3 3h2v4h2V8h2z" fill="currentColor"/>
+              <path d="M5 11v9h14v-9h2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9h2z" fill="currentColor"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -70,7 +79,10 @@
             <p class="detail-meta">Shared by <strong>@{{ post.author_display }}</strong> • {{ post.created_at }}</p>
           </div>
           <a href="{{ url_for('community_feed') }}" class="back-link" data-transition="true">
-            <i class="fas fa-arrow-left"></i> Back to feed
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="currentColor"/>
+            </svg>
+            Back to feed
           </a>
         </header>
 
@@ -91,9 +103,24 @@
         <section class="detail-section">
           <h2>Engagement</h2>
           <div class="detail-stats">
-            <span><i class="fas fa-heart"></i> <span class="like-count">{{ post.likes }}</span> Likes</span>
-            <span><i class="fas fa-bookmark"></i> <span class="save-count">{{ post.saves }}</span> Saves</span>
-            <span><i class="fas fa-comment"></i> <span class="comment-count">{{ post.comments|length }}</span> Comments</span>
+            <span>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+              </svg>
+              <span class="like-count">{{ post.likes }}</span> Likes
+            </span>
+            <span>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 4a2 2 0 0 0-2 2v14l8-3.5 8 3.5V6a2 2 0 0 0-2-2H6z" fill="currentColor"/>
+              </svg>
+              <span class="save-count">{{ post.saves }}</span> Saves
+            </span>
+            <span>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 11.5a8.5 8.5 0 1 0-15.17 4.76L5 21l4.74-1.13A8.5 8.5 0 0 0 21 11.5z" fill="currentColor"/>
+              </svg>
+              <span class="comment-count">{{ post.comments|length }}</span> Comments
+            </span>
           </div>
         </section>
 
@@ -119,7 +146,12 @@
           <form action="{{ url_for('community_add_comment', post_id=post.id) }}" method="post" class="comment-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <textarea name="comment" rows="3" maxlength="1000" placeholder="Share your thoughts..." required></textarea>
-            <button type="submit" class="primary"><i class="fas fa-comment-dots"></i> Add Comment</button>
+            <button type="submit" class="primary">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 21 23 12 2 3v7l15 2-15 2z" fill="currentColor"/>
+              </svg>
+              Add Comment
+            </button>
           </form>
           {% else %}
           <p class="comment-login">Please <a href="/auth/login" data-transition="true">sign in</a> to comment.</p>
@@ -138,16 +170,22 @@
             <img src="{{ related.image_url }}" alt="{{ related.title }}" />
             <div class="community-card__overlay">
               <button type="button"
-                      class="overlay-btn {% if related.liked_by_me %}is-active{% endif %}"
+                      class="overlay-btn is-like {% if related.liked_by_me %}is-active{% endif %}"
                       data-action="toggle-like"
                       data-url="{{ url_for('community_toggle_like', post_id=related.id) }}">
-                <i class="fas fa-heart"></i><span class="count">{{ related.likes }}</span>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+                </svg>
+                <span class="count">{{ related.likes }}</span>
               </button>
               <button type="button"
                       class="overlay-btn is-bookmark {% if related.saved_by_me %}is-active{% endif %}"
                       data-action="toggle-bookmark"
                       data-url="{{ url_for('community_toggle_bookmark', post_id=related.id) }}">
-                <i class="fas fa-bookmark"></i><span class="count">{{ related.saves }}</span>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 4a2 2 0 0 0-2 2v14l8-3.5 8 3.5V6a2 2 0 0 0-2-2H6z" fill="currentColor"/>
+                </svg>
+                <span class="count">{{ related.saves }}</span>
               </button>
             </div>
           </div>
@@ -157,7 +195,12 @@
               <span>@{{ related.author_username }}</span>
             </div>
             <div class="community-card__footer">
-              <span><i class="fas fa-clock"></i>{{ related.posted_at }}</span>
+              <span>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h4v2h-6V7h2v6z" fill="currentColor"/>
+                </svg>
+                {{ related.posted_at }}
+              </span>
               <a href="{{ url_for('community_detail', post_id=related.id) }}" class="view-post" data-transition="true">View Post</a>
             </div>
           </div>
