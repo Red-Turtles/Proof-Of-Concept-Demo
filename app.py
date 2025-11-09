@@ -22,7 +22,16 @@ from dotenv import load_dotenv
 from sqlalchemy import inspect, text, func
 import re
 from security import SecurityManager
-from models import db, User, Identification, UserBadge
+from models import (
+    db,
+    User,
+    Identification,
+    UserBadge,
+    CommunityPost,
+    PostLike,
+    PostBookmark,
+    PostComment
+)
 from auth import AuthManager, mail
 
 # Load environment variables
@@ -123,17 +132,17 @@ with app.app_context():
                 app.logger.error(f"Failed to add username column: {e}")
                 db.session.rollback()
 
-        users_without_username = (
-            User.query
-            .filter((User.username.is_(None)) | (User.username == ''))
-            .all()
-        )
+        users_without_username = User.query.filter(
+            (User.username.is_(None)) | (User.username == '')
+        ).all()
+        updated_any = False
         for user in users_without_username:
             try:
                 user.username = auth._generate_unique_username(user.email)
+                updated_any = True
             except Exception:
                 user.username = None
-        if users_without_username:
+        if updated_any:
             db.session.commit()
     except Exception as migration_error:
         app.logger.error(f"Failed to ensure identifications columns: {migration_error}")
@@ -309,6 +318,11 @@ def get_display_name(user):
         return email.split('@')[0]
     return 'Explorer'
 
+def wants_json_response():
+    return request.is_json or (
+        request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']
+    )
+
 
 def calculate_user_identification_stats(user_id):
     """Aggregate identification stats used for achievements."""
@@ -408,6 +422,52 @@ def build_badge_overview(user_id):
         })
 
     return overview, stats
+
+def get_data_uri(mime, data):
+    return f"data:{mime};base64,{data}"
+
+def build_post_preview(post, current_user):
+    return {
+        'id': post.id,
+        'title': post.title or 'Wildlife Sighting',
+        'description': (post.description or '')[:120],
+        'species': post.species,
+        'author_username': get_display_name(post.author),
+        'image_url': get_data_uri(post.image_mime, post.image_data),
+        'likes': post.like_count(),
+        'saves': post.bookmark_count(),
+        'comments': post.comment_count(),
+        'posted_at': post.created_at.strftime('%b %d, %Y'),
+        'liked_by_me': bool(current_user and post.likes.filter_by(user_id=current_user.id).first()),
+        'saved_by_me': bool(current_user and post.bookmarks.filter_by(user_id=current_user.id).first())
+    }
+
+def build_post_detail(post, current_user):
+    return {
+        'id': post.id,
+        'title': post.title or 'Wildlife Sighting',
+        'description': post.description,
+        'species': post.species,
+        'author': post.author,
+        'author_display': get_display_name(post.author),
+        'image_url': get_data_uri(post.image_mime, post.image_data),
+        'likes': post.like_count(),
+        'saves': post.bookmark_count(),
+        'comments': [
+            {
+                'id': comment.id,
+                'body': comment.body,
+                'author': comment.user,
+                'author_display': get_display_name(comment.user),
+                'created_at': comment.created_at.strftime('%b %d, %Y %I:%M %p')
+            }
+            for comment in post.comments.filter_by(is_deleted=False).order_by(PostComment.created_at.asc())
+        ],
+        'created_at': post.created_at.strftime('%b %d, %Y %I:%M %p'),
+        'liked_by_me': bool(current_user and post.likes.filter_by(user_id=current_user.id).first()),
+        'saved_by_me': bool(current_user and post.bookmarks.filter_by(user_id=current_user.id).first()),
+        'share_url': url_for('community_detail', post_id=post.id, _external=True)
+    }
 
 def create_secure_temp_file(file):
     """Create a secure temporary file with randomized name"""
@@ -1249,6 +1309,14 @@ def profile():
 
     badge_overview, badge_stats = build_badge_overview(current_user.id)
 
+    community_posts = (
+        CommunityPost.query
+        .order_by(CommunityPost.created_at.desc())
+        .limit(6)
+        .all()
+    )
+    community_highlights = [build_post_preview(post, current_user) for post in community_posts]
+
     display_name = get_display_name(current_user)
 
     return render_template(
@@ -1259,7 +1327,8 @@ def profile():
         latest_identification=latest_identification,
         badge_overview=badge_overview,
         badge_stats=badge_stats,
-        display_name=display_name
+        display_name=display_name,
+        community_highlights=community_highlights
     )
 
 
@@ -1627,6 +1696,235 @@ def test_map():
 def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'message': 'WildID API is running'})
+
+@app.route('/community')
+def community_feed():
+    current_user = auth.get_current_user()
+    page = request.args.get('page', 1, type=int)
+    per_page = 9
+
+    query = CommunityPost.query.order_by(CommunityPost.created_at.desc())
+    pagination = db.paginate(query, page=page, per_page=per_page, error_out=False)
+    posts = [build_post_preview(post, current_user) for post in pagination.items]
+    my_post_count = current_user.community_posts.count() if current_user else 0
+
+    return render_template(
+        'community/index.html',
+        current_user=current_user,
+        posts=posts,
+        pagination=pagination,
+        my_post_count=my_post_count
+    )
+
+
+@app.route('/community/new', methods=['GET', 'POST'])
+def community_new():
+    current_user = auth.get_current_user()
+
+    if not current_user:
+        flash('Please sign in to share your sightings.', 'info')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        title = (request.form.get('title', '') or '').strip()[:140]
+        description = (request.form.get('description', '') or '').strip()[:1200]
+        species = (request.form.get('species', '') or '').strip()[:120]
+        file = request.files.get('image')
+
+        if not file or not file.filename:
+            flash('Please upload an image of your sighting.', 'error')
+            return redirect(url_for('community_new'))
+
+        if not allowed_file(file.filename):
+            flash('Unsupported file type. Please upload PNG, JPG, JPEG, GIF, BMP, or WEBP.', 'error')
+            return redirect(url_for('community_new'))
+
+        temp_path = None
+        try:
+            temp_path, _ = create_secure_temp_file(file)
+            if not validate_image(temp_path):
+                flash('The uploaded image appears to be invalid. Please try another file.', 'error')
+                return redirect(url_for('community_new'))
+
+            image_base64 = encode_image_to_base64(temp_path)
+        except Exception as exc:
+            logger.error(f"Failed to process community image upload: {exc}")
+            flash('Unable to process your image. Please try again.', 'error')
+            return redirect(url_for('community_new'))
+        finally:
+            if temp_path:
+                cleanup_temp_file(temp_path)
+
+        post = CommunityPost(
+            user_id=current_user.id,
+            title=title or None,
+            description=description or None,
+            species=species or None,
+            image_data=image_base64,
+            image_mime=file.mimetype or 'image/jpeg'
+        )
+
+        db.session.add(post)
+        db.session.commit()
+
+        flash('Your sighting has been shared with the community!', 'success')
+        return redirect(url_for('community_detail', post_id=post.id))
+
+    return render_template('community/new.html', current_user=current_user)
+
+
+@app.route('/community/<int:post_id>')
+def community_detail(post_id):
+    post = CommunityPost.query.get_or_404(post_id)
+    current_user = auth.get_current_user()
+
+    post_data = build_post_detail(post, current_user)
+    related_posts = (
+        CommunityPost.query
+        .filter(CommunityPost.id != post.id)
+        .order_by(CommunityPost.created_at.desc())
+        .limit(4)
+        .all()
+    )
+    related_previews = [build_post_preview(related, current_user) for related in related_posts]
+
+    return render_template(
+        'community/detail.html',
+        current_user=current_user,
+        post=post_data,
+        related_posts=related_previews
+    )
+
+
+@app.route('/community/<int:post_id>/like', methods=['POST'])
+def community_toggle_like(post_id):
+    current_user = auth.get_current_user()
+    if not current_user:
+        message = 'Please sign in to like posts.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 401
+        flash(message, 'info')
+        return redirect(url_for('login'))
+
+    post = CommunityPost.query.get_or_404(post_id)
+    existing = PostLike.query.filter_by(user_id=current_user.id, post_id=post.id).first()
+
+    if existing:
+        db.session.delete(existing)
+        action = 'unliked'
+    else:
+        like = PostLike(user_id=current_user.id, post_id=post.id)
+        db.session.add(like)
+        action = 'liked'
+
+    db.session.commit()
+
+    payload = {
+        'success': True,
+        'action': action,
+        'likes': post.like_count(),
+        'saves': post.bookmark_count(),
+        'comments': post.comment_count()
+    }
+
+    if wants_json_response():
+        return jsonify(payload)
+
+    flash('Post liked!' if action == 'liked' else 'Like removed.', 'success')
+    return redirect(url_for('community_detail', post_id=post.id))
+
+
+@app.route('/community/<int:post_id>/bookmark', methods=['POST'])
+def community_toggle_bookmark(post_id):
+    current_user = auth.get_current_user()
+    if not current_user:
+        message = 'Please sign in to save posts.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 401
+        flash(message, 'info')
+        return redirect(url_for('login'))
+
+    post = CommunityPost.query.get_or_404(post_id)
+    existing = PostBookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first()
+
+    if existing:
+        db.session.delete(existing)
+        action = 'unsaved'
+    else:
+        bookmark = PostBookmark(user_id=current_user.id, post_id=post.id)
+        db.session.add(bookmark)
+        action = 'saved'
+
+    db.session.commit()
+
+    payload = {
+        'success': True,
+        'action': action,
+        'likes': post.like_count(),
+        'saves': post.bookmark_count(),
+        'comments': post.comment_count()
+    }
+
+    if wants_json_response():
+        return jsonify(payload)
+
+    flash('Post saved!' if action == 'saved' else 'Post removed from saved items.', 'success')
+    return redirect(url_for('community_detail', post_id=post.id))
+
+
+@app.route('/community/<int:post_id>/comment', methods=['POST'])
+def community_add_comment(post_id):
+    current_user = auth.get_current_user()
+    if not current_user:
+        message = 'Please sign in to comment.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 401
+        flash(message, 'info')
+        return redirect(url_for('login'))
+
+    post = CommunityPost.query.get_or_404(post_id)
+    if request.is_json:
+        payload = request.get_json(silent=True) or {}
+        body = (payload.get('comment') or '').strip()
+    else:
+        body = (request.form.get('comment') or '').strip()
+
+    if not body:
+        message = 'Comment cannot be empty.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 400
+        flash(message, 'error')
+        return redirect(url_for('community_detail', post_id=post.id))
+
+    if len(body) > 1000:
+        message = 'Comment is too long. Please keep it under 1000 characters.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 400
+        flash(message, 'error')
+        return redirect(url_for('community_detail', post_id=post.id))
+
+    comment = PostComment(user_id=current_user.id, post_id=post.id, body=body)
+    db.session.add(comment)
+    db.session.commit()
+
+    if wants_json_response():
+        return jsonify({
+            'success': True,
+            'comment': {
+                'id': comment.id,
+                'body': comment.body,
+                'author_display': get_display_name(current_user),
+                'created_at': comment.created_at.strftime('%b %d, %Y %I:%M %p')
+            },
+            'counts': {
+                'likes': post.like_count(),
+                'saves': post.bookmark_count(),
+                'comments': post.comment_count()
+            }
+        })
+
+    flash('Comment added!', 'success')
+    return redirect(url_for('community_detail', post_id=post.id))
 
 if __name__ == '__main__':
     # Get port from environment or default to 3000

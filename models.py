@@ -21,6 +21,10 @@ class User(db.Model):
     
     # Relationships
     identifications = db.relationship('Identification', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    community_posts = db.relationship('CommunityPost', backref='author', lazy='dynamic', cascade='all, delete-orphan')
+    post_likes = db.relationship('PostLike', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    post_bookmarks = db.relationship('PostBookmark', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    post_comments = db.relationship('PostComment', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<User {self.email}>'
@@ -142,4 +146,79 @@ class LoginToken(db.Model):
     def is_valid(self):
         """Check if token is still valid"""
         return not self.used and datetime.utcnow() < self.expires_at
+
+
+class CommunityPost(db.Model):
+    """Community shared sightings"""
+    __tablename__ = 'community_posts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    title = db.Column(db.String(140))
+    description = db.Column(db.Text)
+    species = db.Column(db.String(120))
+    image_data = db.Column(db.Text, nullable=False)
+    image_mime = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    likes = db.relationship('PostLike', backref='post', lazy='dynamic', cascade='all, delete-orphan')
+    bookmarks = db.relationship('PostBookmark', backref='post', lazy='dynamic', cascade='all, delete-orphan')
+    comments = db.relationship('PostComment', backref='post', lazy='dynamic', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<CommunityPost {self.id}: {self.title}>'
+
+    def like_count(self):
+        return self.likes.count()
+
+    def bookmark_count(self):
+        return self.bookmarks.count()
+
+    def comment_count(self):
+        return self.comments.filter_by(is_deleted=False).count()
+
+
+class PostLike(db.Model):
+    """Track post likes"""
+    __tablename__ = 'post_likes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('community_posts.id', ondelete='CASCADE'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'post_id', name='uq_post_like_user'),
+    )
+
+
+class PostBookmark(db.Model):
+    """Track saved posts"""
+    __tablename__ = 'post_bookmarks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('community_posts.id', ondelete='CASCADE'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'post_id', name='uq_post_bookmark_user'),
+    )
+
+
+class PostComment(db.Model):
+    """Comments on community posts"""
+    __tablename__ = 'post_comments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('community_posts.id', ondelete='CASCADE'), nullable=False, index=True)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False)
+
+    def __repr__(self):
+        return f'<PostComment {self.id} on post {self.post_id}>'
 

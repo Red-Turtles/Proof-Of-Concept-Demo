@@ -200,6 +200,7 @@
       <div class="nav-links">
         <a href="/" class="nav-link">Home</a>
         <a href="/discovery" class="nav-link">Discovery</a>
+        <a href="/community" class="nav-link" data-transition="true">Community</a>
         {% if current_user %}
           <div class="profile-menu">
             <a href="/profile" class="nav-link profile-toggle active" data-transition="true">Profile</a>
@@ -344,7 +345,7 @@
               {% endif %}
             </span>
             <div class="badge-progress-bar">
-              <div class="badge-progress-fill" style="width: {{ (badge.progress_ratio * 100)|round(0, 'floor') }}%;"></div>
+              <div class="badge-progress-fill" data-progress="{{ (badge.progress_ratio * 100)|int }}"></div>
             </div>
           </div>
         </div>
@@ -369,6 +370,75 @@
       </form>
       <p class="hint">Use 3–30 characters: letters, numbers, and underscores only. This name will appear on your community posts.</p>
     </div>
+
+    <section class="community-preview-container">
+      <div class="community-header">
+        <div>
+          <h2>Community Highlights</h2>
+          <p>See what other explorers are sharing right now.</p>
+        </div>
+        <div class="community-actions">
+          <a href="/community" class="primary" data-transition="true">
+            <i class="fas fa-users"></i> Visit Community
+          </a>
+          <a href="/community/new" class="secondary" data-transition="true">
+            <i class="fas fa-plus-circle"></i> Share a Sighting
+          </a>
+        </div>
+      </div>
+
+      <div class="community-grid">
+        {% for post in community_highlights %}
+        <article class="community-card">
+          <div class="community-card__media">
+            <img src="{{ post.image_url }}" alt="{{ post.title or 'Community post' }}" />
+            <div class="community-card__overlay">
+              <button type="button"
+                      class="overlay-btn {% if post.liked_by_me %}is-active{% endif %}"
+                      data-action="toggle-like"
+                      data-url="{{ url_for('community_toggle_like', post_id=post.id) }}">
+                <i class="fas fa-heart"></i><span class="count">{{ post.likes }}</span>
+              </button>
+              <button type="button"
+                      class="overlay-btn is-bookmark {% if post.saved_by_me %}is-active{% endif %}"
+                      data-action="toggle-bookmark"
+                      data-url="{{ url_for('community_toggle_bookmark', post_id=post.id) }}">
+                <i class="fas fa-bookmark"></i><span class="count">{{ post.saves }}</span>
+              </button>
+              <button type="button"
+                      class="overlay-btn"
+                      data-share-url="{{ url_for('community_detail', post_id=post.id, _external=True) }}">
+                <i class="fas fa-share"></i>
+              </button>
+            </div>
+          </div>
+          <div class="community-card__body">
+            <div class="community-card__title">
+              <h3>{{ post.title or 'Wildlife Sighting' }}</h3>
+              <span>@{{ post.author_username }}</span>
+            </div>
+            {% if post.description %}
+            <p class="community-card__excerpt">{{ post.description }}{% if post.description|length == 120 %}…{% endif %}</p>
+            {% endif %}
+            {% if post.species %}
+            <p class="community-card__meta">Species: <strong>{{ post.species }}</strong></p>
+            {% endif %}
+            <div class="community-card__footer">
+              <span><i class="fas fa-clock"></i> {{ post.posted_at }}</span>
+              <a href="/community/{{ post.id }}" class="view-post" data-transition="true">View Post</a>
+            </div>
+          </div>
+        </article>
+        {% else %}
+        <div class="community-empty">
+          <span>🌍</span>
+          <h3>No community posts yet</h3>
+          <p>Be the first to share your wildlife discoveries with the WildID community.</p>
+          <a href="/community/new" class="primary" data-transition="true"><i class="fas fa-plus-circle"></i> Share a Sighting</a>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
 
     <div class="profile-signout-wrapper">
       <form action="/auth/logout" method="post">
