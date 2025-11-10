@@ -13,14 +13,26 @@ import tempfile
 import logging
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, g
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash, g, abort
 from flask_cors import CORS
 from flask_session import Session
 from PIL import Image
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from sqlalchemy import inspect, text, func
+import re
 from security import SecurityManager
-from models import db, User, Identification
+from models import (
+    db,
+    User,
+    Identification,
+    UserBadge,
+    CommunityPost,
+    PostLike,
+    PostBookmark,
+    PostComment,
+    PostShare
+)
 from auth import AuthManager, mail
 
 # Load environment variables
@@ -41,9 +53,13 @@ app.config['SESSION_FILE_THRESHOLD'] = 100
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'true').lower() == 'true' if not app.debug else os.getenv('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=int(os.getenv('PERMANENT_SESSION_DAYS', '7')))
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=int(os.getenv('PERMANENT_SESSION_DAYS', '30')))
 app.config['PREFERRED_URL_SCHEME'] = os.getenv('PREFERRED_URL_SCHEME', 'https' if not app.debug else 'http')
 app.config['REMEMBER_COOKIE_SECURE'] = os.getenv('REMEMBER_COOKIE_SECURE', 'true').lower() == 'true' if not app.debug else os.getenv('REMEMBER_COOKIE_SECURE', 'false').lower() == 'true'
+app.config.setdefault('REMEMBER_COOKIE_NAME', 'wildid_remember')
+app.config.setdefault('REMEMBER_COOKIE_DURATION', 60 * 60 * 24 * 30)
+app.config.setdefault('REMEMBER_COOKIE_SAMESITE', app.config.get('SESSION_COOKIE_SAMESITE', 'Lax'))
 
 
 def _parse_csv_env(var_name, fallback=None):
@@ -94,6 +110,68 @@ auth = AuthManager(app)
 # Create database tables
 with app.app_context():
     db.create_all()
+    try:
+        inspector = inspect(db.engine)
+        identification_columns = {column['name'] for column in inspector.get_columns('identifications')}
+        migrations = []
+        if 'user_feedback' not in identification_columns:
+            migrations.append("ALTER TABLE identifications ADD COLUMN user_feedback VARCHAR(20)")
+        if 'feedback_comment' not in identification_columns:
+            migrations.append("ALTER TABLE identifications ADD COLUMN feedback_comment TEXT")
+        if 'feedback_at' not in identification_columns:
+            migrations.append("ALTER TABLE identifications ADD COLUMN feedback_at TIMESTAMP")
+        for statement in migrations:
+            db.session.execute(text(statement))
+        if migrations:
+            db.session.commit()
+        user_columns = {column['name'] for column in inspector.get_columns('users')}
+        if 'username' not in user_columns:
+            try:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(80)"))
+                db.session.commit()
+            except Exception as e:
+                app.logger.error(f"Failed to add username column: {e}")
+                db.session.rollback()
+
+        users_without_username = User.query.filter(
+            (User.username.is_(None)) | (User.username == '')
+        ).all()
+        updated_any = False
+        for user in users_without_username:
+            try:
+                user.username = auth._generate_unique_username(user.email)
+                updated_any = True
+            except Exception:
+                user.username = None
+        if updated_any:
+            db.session.commit()
+
+        community_columns = {column['name'] for column in inspector.get_columns('community_posts')}
+        community_migrations = []
+        if 'location_name' not in community_columns:
+            community_migrations.append("ALTER TABLE community_posts ADD COLUMN location_name VARCHAR(255)")
+        if 'latitude' not in community_columns:
+            community_migrations.append("ALTER TABLE community_posts ADD COLUMN latitude FLOAT")
+        if 'longitude' not in community_columns:
+            community_migrations.append("ALTER TABLE community_posts ADD COLUMN longitude FLOAT")
+        if 'location_source' not in community_columns:
+            community_migrations.append("ALTER TABLE community_posts ADD COLUMN location_source VARCHAR(20)")
+
+        for statement in community_migrations:
+            try:
+                db.session.execute(text(statement))
+            except Exception as exc:
+                app.logger.error(f"Failed to apply community_posts migration '{statement}': {exc}")
+                db.session.rollback()
+        if community_migrations:
+            db.session.commit()
+    except Exception as migration_error:
+        app.logger.error(f"Failed to ensure identifications columns: {migration_error}")
+        db.session.rollback()
+
+@app.before_request
+def restore_user_from_cookie():
+    auth.ensure_user_from_remember_cookie()
 
 # Security headers
 @app.after_request
@@ -112,7 +190,8 @@ def add_security_headers(response):
         "default-src 'self';",
         f"script-src {' '.join(script_sources)};",
         "style-src 'self' 'unsafe-inline' https://unpkg.com;",
-        "img-src 'self' data: https://*.tile.openstreetmap.org;"
+        "img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com;",
+        "connect-src 'self' https://unpkg.com;"
     ])
     response.headers['Content-Security-Policy'] = csp
     return response
@@ -197,6 +276,162 @@ app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16777216)
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
 
+# Badge configuration
+BADGE_DEFINITIONS = [
+    {
+        'key': 'first_identification',
+        'name': 'First Discovery',
+        'description': 'Complete your first wildlife identification.',
+        'icon': '🌱',
+        'type': 'total_identifications',
+        'threshold': 1
+    },
+    {
+        'key': 'trailblazer',
+        'name': 'Trailblazer',
+        'description': 'Complete five wildlife identifications.',
+        'icon': '🔥',
+        'type': 'total_identifications',
+        'threshold': 5
+    },
+    {
+        'key': 'wildlife_champion',
+        'name': 'Wildlife Champion',
+        'description': 'Complete ten wildlife identifications.',
+        'icon': '🏆',
+        'type': 'total_identifications',
+        'threshold': 10
+    },
+    {
+        'key': 'species_sleuth',
+        'name': 'Species Sleuth',
+        'description': 'Identify three unique species.',
+        'icon': '🕵️',
+        'type': 'unique_species',
+        'threshold': 3
+    },
+    {
+        'key': 'habitat_hopper',
+        'name': 'Habitat Hopper',
+        'description': 'Identify animals from three different animal types.',
+        'icon': '🦋',
+        'type': 'animal_types',
+        'threshold': 3
+    },
+    {
+        'key': 'community_first_post',
+        'name': 'Community Sprout',
+        'description': 'Share your first community sighting.',
+        'icon': '📸',
+        'type': 'community_posts',
+        'threshold': 1
+    },
+    {
+        'key': 'community_storyteller',
+        'name': 'Storyteller',
+        'description': 'Share five community sightings.',
+        'icon': '📝',
+        'type': 'community_posts',
+        'threshold': 5
+    },
+    {
+        'key': 'community_maven',
+        'name': 'Community Maven',
+        'description': 'Receive twenty-five likes across your community posts.',
+        'icon': '💖',
+        'type': 'community_likes',
+        'threshold': 25
+    },
+    {
+        'key': 'community_ambassador',
+        'name': 'WildID Ambassador',
+        'description': 'Inspire others to share by having your posts shared 10 times.',
+        'icon': '🗺️',
+        'type': 'community_shares',
+        'threshold': 10
+    },
+    {
+        'key': 'quest_lion_spotter',
+        'name': 'Lion Spotter',
+        'description': 'Successfully identify a lion in the wild.',
+        'icon': '🦁',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'lion',
+        'target_species': 'panthera leo'
+    },
+    {
+        'key': 'quest_sea_turtle_guardian',
+        'name': 'Sea Turtle Guardian',
+        'description': 'Identify a sea turtle to help protect our oceans.',
+        'icon': '🐢',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'sea turtle'
+    },
+    {
+        'key': 'quest_bald_eagle_ranger',
+        'name': 'Eagle Ranger',
+        'description': 'Spot and identify a bald eagle.',
+        'icon': '🦅',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'bald eagle',
+        'target_species': 'haliaeetus leucocephalus'
+    },
+    {
+        'key': 'quest_penguin_patrol',
+        'name': 'Penguin Patrol',
+        'description': 'Discover and identify a penguin species.',
+        'icon': '🐧',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'penguin'
+    },
+    {
+        'key': 'quest_shark_sentinel',
+        'name': 'Shark Sentinel',
+        'description': 'Log a sighting of a great white shark.',
+        'icon': '🦈',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'great white shark',
+        'target_species': 'carcharodon carcharias'
+    },
+    {
+        'key': 'quest_gorilla_guardian',
+        'name': 'Gorilla Guardian',
+        'description': 'Identify a mountain gorilla in its habitat.',
+        'icon': '🦍',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'gorilla',
+        'target_species': 'gorilla beringei'
+    },
+    {
+        'key': 'quest_red_panda_protector',
+        'name': 'Red Panda Protector',
+        'description': 'Track down the elusive red panda.',
+        'icon': '🦊',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'red panda',
+        'target_species': 'ailurus fulgens'
+    },
+    {
+        'key': 'quest_snow_leopard_seeker',
+        'name': 'Snow Leopard Seeker',
+        'description': 'Spot a snow leopard high in the mountains.',
+        'icon': '🐆',
+        'type': 'quest_species',
+        'threshold': 1,
+        'target_common_name': 'snow leopard',
+        'target_species': 'panthera uncia'
+    }
+]
+
+QUEST_DEFINITIONS = [definition for definition in BADGE_DEFINITIONS if definition.get('type') == 'quest_species']
+
 # Create upload directory if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -204,6 +439,237 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def get_display_name(user):
+    if not user:
+        return ''
+    username = getattr(user, 'username', None)
+    if username:
+        return username
+    email = getattr(user, 'email', '')
+    if email:
+        return email.split('@')[0]
+    return 'Explorer'
+
+def wants_json_response():
+    return request.is_json or (
+        request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']
+    )
+
+
+def calculate_user_identification_stats(user_id):
+    """Aggregate identification stats used for achievements."""
+    total_identifications = db.session.query(func.count(Identification.id)).filter_by(user_id=user_id).scalar() or 0
+
+    unique_species = (
+        db.session.query(func.count(func.distinct(Identification.species)))
+        .filter(
+            Identification.user_id == user_id,
+            Identification.species.isnot(None),
+            Identification.species != ''
+        )
+        .scalar()
+    ) or 0
+
+    unique_animal_types = (
+        db.session.query(func.count(func.distinct(Identification.animal_type)))
+        .filter(
+            Identification.user_id == user_id,
+            Identification.animal_type.isnot(None),
+            Identification.animal_type != ''
+        )
+        .scalar()
+    ) or 0
+
+    species_rows = (
+        db.session.query(
+            func.lower(func.coalesce(Identification.species, '')).label('species'),
+            func.lower(func.coalesce(Identification.common_name, '')).label('common_name')
+        )
+        .filter(Identification.user_id == user_id)
+        .all()
+    )
+
+    identified_species_set = {row.species for row in species_rows if row.species}
+    identified_common_names_set = {row.common_name for row in species_rows if row.common_name}
+
+    return {
+        'total_identifications': total_identifications,
+        'unique_species': unique_species,
+        'animal_types': unique_animal_types,
+        'identified_species_set': identified_species_set,
+        'identified_common_names_set': identified_common_names_set
+    }
+
+
+def calculate_user_community_stats(user_id):
+    """Aggregate community (posts/engagement) stats used for achievements."""
+    post_count = db.session.query(func.count(CommunityPost.id)).filter_by(user_id=user_id).scalar() or 0
+
+    likes_received = (
+        db.session.query(func.count(PostLike.id))
+        .join(CommunityPost, PostLike.post_id == CommunityPost.id)
+        .filter(CommunityPost.user_id == user_id)
+        .scalar()
+    ) or 0
+
+    shares_received = (
+        db.session.query(func.count(PostShare.id))
+        .join(CommunityPost, PostShare.post_id == CommunityPost.id)
+        .filter(CommunityPost.user_id == user_id)
+        .scalar()
+    ) or 0
+
+    return {
+        'community_posts': post_count,
+        'community_likes': likes_received,
+        'community_shares': shares_received
+    }
+
+
+def calculate_user_badge_stats(user_id):
+    stats = calculate_user_identification_stats(user_id)
+    stats.update(calculate_user_community_stats(user_id))
+    return stats
+
+
+def evaluate_badge_progress(badge_definition, stats):
+    metric_type = badge_definition['type']
+
+    if metric_type == 'quest_species':
+        target_species = (badge_definition.get('target_species') or '').lower()
+        target_common = (badge_definition.get('target_common_name') or '').lower()
+        species_set = stats.get('identified_species_set', set())
+        common_set = stats.get('identified_common_names_set', set())
+        achieved = False
+        if target_species:
+            achieved = target_species in species_set
+        if not achieved and target_common:
+            achieved = target_common in common_set
+        return (1 if achieved else 0), achieved
+
+    current_value = stats.get(metric_type, 0)
+    return current_value, current_value >= badge_definition['threshold']
+
+
+def award_badges_for_user(user):
+    """Check badge criteria for a user and award new badges."""
+    stats = calculate_user_badge_stats(user.id)
+    existing_badges = {
+        badge.badge_key: badge for badge in UserBadge.query.filter_by(user_id=user.id)
+    }
+
+    new_badges = []
+    for badge_definition in BADGE_DEFINITIONS:
+        if badge_definition['key'] in existing_badges:
+            continue
+
+        progress_value, achieved = evaluate_badge_progress(badge_definition, stats)
+        if achieved:
+            badge = UserBadge(
+                user_id=user.id,
+                badge_key=badge_definition['key'],
+                badge_name=badge_definition['name'],
+                badge_description=badge_definition['description'],
+                badge_icon=badge_definition['icon'],
+                metadata_json=json.dumps({
+                    'progress_value': progress_value,
+                    'threshold': badge_definition['threshold']
+                })
+            )
+            db.session.add(badge)
+            new_badges.append(badge)
+
+    if new_badges:
+        db.session.commit()
+
+    return new_badges
+
+
+def build_badge_overview(user_id):
+    stats = calculate_user_badge_stats(user_id)
+    awarded_badges = {
+        badge.badge_key: badge for badge in UserBadge.query.filter_by(user_id=user_id)
+    }
+
+    overview = []
+    for definition in BADGE_DEFINITIONS:
+        progress_value, achieved = evaluate_badge_progress(definition, stats)
+        threshold = definition['threshold']
+        ratio = min(progress_value / threshold if threshold else 1, 1.0)
+        award = awarded_badges.get(definition['key'])
+
+        overview.append({
+            'key': definition['key'],
+            'name': definition['name'],
+            'description': definition['description'],
+            'icon': definition['icon'],
+            'is_earned': bool(award),
+            'awarded_at': award.awarded_at if award else None,
+            'progress_value': progress_value,
+            'threshold': threshold,
+            'progress_ratio': ratio,
+            'remaining': max(threshold - progress_value, 0)
+        })
+
+    return overview, stats
+
+def get_data_uri(mime, data):
+    return f"data:{mime};base64,{data}"
+
+def build_post_preview(post, current_user):
+    return {
+        'id': post.id,
+        'title': post.title or 'Wildlife Sighting',
+        'description': (post.description or '')[:120],
+        'species': post.species,
+        'author_username': get_display_name(post.author),
+        'image_url': get_data_uri(post.image_mime, post.image_data),
+        'likes': post.like_count(),
+        'saves': post.bookmark_count(),
+        'comments': post.comment_count(),
+        'shares': post.share_count(),
+        'posted_at': post.created_at.strftime('%b %d, %Y'),
+        'liked_by_me': bool(current_user and post.likes.filter_by(user_id=current_user.id).first()),
+        'saved_by_me': bool(current_user and post.bookmarks.filter_by(user_id=current_user.id).first()),
+        'location_name': post.location_name,
+        'latitude': post.latitude,
+        'longitude': post.longitude,
+        'location_source': post.location_source
+    }
+
+def build_post_detail(post, current_user):
+    return {
+        'id': post.id,
+        'title': post.title or 'Wildlife Sighting',
+        'description': post.description,
+        'species': post.species,
+        'author': post.author,
+        'author_display': get_display_name(post.author),
+        'image_url': get_data_uri(post.image_mime, post.image_data),
+        'likes': post.like_count(),
+        'saves': post.bookmark_count(),
+        'shares': post.share_count(),
+        'comments': [
+            {
+                'id': comment.id,
+                'body': comment.body,
+                'author': comment.user,
+                'author_display': get_display_name(comment.user),
+                'created_at': comment.created_at.strftime('%b %d, %Y %I:%M %p')
+            }
+            for comment in post.comments.filter_by(is_deleted=False).order_by(PostComment.created_at.asc())
+        ],
+        'created_at': post.created_at.strftime('%b %d, %Y %I:%M %p'),
+        'liked_by_me': bool(current_user and post.likes.filter_by(user_id=current_user.id).first()),
+        'saved_by_me': bool(current_user and post.bookmarks.filter_by(user_id=current_user.id).first()),
+        'share_url': url_for('community_detail', post_id=post.id, _external=True),
+        'location_name': post.location_name,
+        'latitude': post.latitude,
+        'longitude': post.longitude,
+        'location_source': post.location_source
+    }
 
 def create_secure_temp_file(file):
     """Create a secure temporary file with randomized name"""
@@ -253,6 +719,169 @@ def validate_image(image_path):
         return True
     except Exception:
         return False
+
+
+def _parse_coordinate_pair(value):
+    """Parse a simple 'lat, lon' string if provided."""
+    if not value or ',' not in value:
+        return None
+    try:
+        lat_str, lon_str = [segment.strip() for segment in value.split(',', 1)]
+        latitude = float(lat_str)
+        longitude = float(lon_str)
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            return None
+        return latitude, longitude
+    except ValueError:
+        return None
+
+
+def geocode_location(query):
+    """Resolve a human-readable location into coordinates using OpenStreetMap."""
+    if not query:
+        return None
+
+    # Direct coordinate input support
+    coords = _parse_coordinate_pair(query)
+    if coords:
+        return query, coords[0], coords[1]
+
+    try:
+        response = requests.get(
+            'https://nominatim.openstreetmap.org/search',
+            params={'q': query, 'format': 'json', 'limit': 1},
+            headers={'User-Agent': 'WildIDCommunity/1.0'}
+        )
+        if response.status_code != 200:
+            logger.warning(f"Nominatim geocoding failed with status {response.status_code} for '{query}'")
+            return None
+        data = response.json()
+        if not data:
+            return None
+        result = data[0]
+        display_name = result.get('display_name', query)
+        latitude = float(result.get('lat'))
+        longitude = float(result.get('lon'))
+        return display_name, latitude, longitude
+    except Exception as exc:
+        logger.error(f"Geocoding lookup failed for '{query}': {exc}")
+        return None
+
+
+def infer_location_with_ai(image_base64, title, description, species):
+    """
+    Attempt to infer a likely location when the user did not provide one.
+    Uses the Together.ai API if configured. Returns a dict with location info or None.
+    """
+    api_key = os.getenv('TOGETHER_API_KEY')
+    if not api_key:
+        return None
+
+    model = os.getenv('TOGETHER_LOCATION_MODEL', 'meta-llama/Llama-3-70B-Instruct-Turbo')
+    prompt_context = {
+        'title': title or '',
+        'species': species or '',
+        'description': description or ''
+    }
+
+    # We avoid sending the entire base64 payload (which can be large), but include a short prefix for context.
+    if image_base64:
+        prompt_context['image_base64_prefix'] = image_base64[:512]
+
+    payload = {
+        'model': model,
+        'max_tokens': 300,
+        'temperature': 0.2,
+        'messages': [
+            {
+                'role': 'system',
+                'content': (
+                    "You are an assistant that guesses where a wildlife photo may have been captured. "
+                    "Always respond with JSON: {\"location_name\": string|null, \"confidence\": string, \"reasoning\": string}. "
+                    "If unsure, set location_name to null."
+                )
+            },
+            {
+                'role': 'user',
+                'content': (
+                    "Based on the following information about a wildlife sighting, guess the likely location. "
+                    "Title: {title}\nSpecies: {species}\nDescription: {description}\n"
+                    "Image base64 prefix (may be truncated): {image_base64_prefix}"
+                ).format(**{k: prompt_context.get(k, '') for k in prompt_context})
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(
+            'https://api.together.xyz/v1/chat/completions',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json'
+            },
+            json=payload,
+            timeout=30
+        )
+        if response.status_code != 200:
+            logger.warning(f"Together.ai location inference failed with status {response.status_code}: {response.text}")
+            return None
+        data = response.json()
+        choices = data.get('choices')
+        if not choices:
+            return None
+        content = choices[0].get('message', {}).get('content', '')
+        if not content:
+            return None
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, dict) and parsed.get('location_name'):
+                return {
+                    'location_name': parsed.get('location_name'),
+                    'confidence': parsed.get('confidence'),
+                    'reasoning': parsed.get('reasoning')
+                }
+        except json.JSONDecodeError:
+            logger.warning("Together.ai response was not valid JSON: %s", content[:200])
+            return None
+    except Exception as exc:
+        logger.error(f"Together.ai location inference error: {exc}")
+    return None
+
+
+def determine_post_location(location_input, image_base64, title, description, species, current_post=None):
+    """Resolve location details for a community post."""
+    location_input = (location_input or '').strip()
+    location_name = None
+    latitude = None
+    longitude = None
+    location_source = None
+    user_location_failed = False
+
+    if location_input:
+        resolved = geocode_location(location_input)
+        if resolved:
+            location_name, latitude, longitude = resolved
+            location_source = 'user'
+        else:
+            user_location_failed = True
+    elif current_post and current_post.location_name:
+        location_name = current_post.location_name
+        latitude = current_post.latitude
+        longitude = current_post.longitude
+        location_source = current_post.location_source
+
+    if not location_name:
+        ai_guess = infer_location_with_ai(image_base64, title, description, species)
+        if ai_guess and ai_guess.get('location_name'):
+            ai_resolved = geocode_location(ai_guess['location_name'])
+            if ai_resolved:
+                location_name, latitude, longitude = ai_resolved
+                location_source = 'ai'
+                logger.info(f"AI location guess applied for community post: {location_name}")
+            else:
+                logger.info("AI suggested location could not be geocoded: %s", ai_guess.get('location_name'))
+
+    return location_name, latitude, longitude, location_source, user_location_failed
 
 def identify_turtle_species_openai(image_path):
     """Use OpenAI GPT-4 Vision to identify turtle species"""
@@ -990,16 +1619,20 @@ def verify_magic_link():
     
     # Log user in
     auth.login_user(user)
+    response = redirect(url_for('index'))
+    auth.set_remember_cookie(response, user)
     
-    flash(f'Welcome back, {email}!', 'success')
-    return redirect(url_for('index'))
+    flash(f'Welcome back, {get_display_name(user)}!', 'success')
+    return response
 
 @app.route('/auth/logout', methods=['POST'])
 def logout():
     """Log out the current user"""
     auth.logout_user()
+    response = redirect(url_for('index'))
+    auth.clear_remember_cookie(response)
     flash('You have been logged out successfully', 'success')
-    return redirect(url_for('index'))
+    return response
 
 @app.route('/history')
 def history():
@@ -1018,6 +1651,126 @@ def history():
     return render_template('history.html', 
                          current_user=current_user, 
                          identifications=identifications)
+
+@app.route('/profile')
+def profile():
+    """Show account overview with recent identifications"""
+    current_user = auth.get_current_user()
+
+    if not current_user:
+        flash('Please sign in to view your profile', 'info')
+        return redirect(url_for('login'))
+
+    recent_identifications = (
+        Identification.query
+        .filter_by(user_id=current_user.id)
+        .order_by(Identification.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
+    total_identifications = Identification.query.filter_by(user_id=current_user.id).count()
+    latest_identification = recent_identifications[0] if recent_identifications else None
+
+    badge_overview, badge_stats = build_badge_overview(current_user.id)
+
+    community_posts = (
+        CommunityPost.query
+        .order_by(CommunityPost.created_at.desc())
+        .limit(6)
+        .all()
+    )
+    community_highlights = [build_post_preview(post, current_user) for post in community_posts]
+
+    saved_posts = (
+        CommunityPost.query
+        .join(PostBookmark, PostBookmark.post_id == CommunityPost.id)
+        .filter(PostBookmark.user_id == current_user.id)
+        .order_by(PostBookmark.created_at.desc())
+        .limit(6)
+        .all()
+    )
+    saved_highlights = [build_post_preview(post, current_user) for post in saved_posts]
+
+    display_name = get_display_name(current_user)
+
+    return render_template(
+        'profile.html',
+        current_user=current_user,
+        recent_identifications=recent_identifications,
+        total_identifications=total_identifications,
+        latest_identification=latest_identification,
+        badge_overview=badge_overview,
+        badge_stats=badge_stats,
+        display_name=display_name,
+        community_highlights=community_highlights,
+        saved_highlights=saved_highlights
+    )
+
+
+@app.route('/profile/username', methods=['POST'])
+def update_username():
+    current_user = auth.get_current_user()
+
+    if not current_user:
+        flash('Please sign in to update your username.', 'info')
+        return redirect(url_for('login'))
+
+    desired_username = request.form.get('username', '').strip()
+
+    if not desired_username:
+        flash('Please enter a username.', 'error')
+        return redirect(url_for('profile'))
+
+    if not re.match(r'^[A-Za-z0-9_]{3,30}$', desired_username):
+        flash('Usernames must be 3-30 characters and may contain letters, numbers, and underscores.', 'error')
+        return redirect(url_for('profile'))
+
+    normalized = desired_username.lower()
+    existing = User.query.filter(db.func.lower(User.username) == normalized).first()
+    if existing and existing.id != current_user.id:
+        flash('That username is already taken. Please choose another.', 'error')
+        return redirect(url_for('profile'))
+
+    current_user.username = desired_username
+    db.session.commit()
+
+    flash('Username updated successfully!', 'success')
+    return redirect(url_for('profile'))
+
+@app.route('/history/<int:identification_id>')
+def history_detail(identification_id):
+    """Detailed view for a single identification"""
+    current_user = auth.get_current_user()
+
+    if not current_user:
+        flash('Please sign in to view identification details', 'info')
+        return redirect(url_for('login'))
+
+    identification = Identification.query.filter_by(
+        id=identification_id,
+        user_id=current_user.id
+    ).first()
+
+    if not identification:
+        abort(404)
+
+    result_data = identification.get_result_json() or {
+        'species': identification.species,
+        'common_name': identification.common_name,
+        'animal_type': identification.animal_type,
+        'conservation_status': identification.conservation_status,
+        'confidence': identification.confidence,
+        'description': identification.description,
+        'notes': identification.notes,
+    }
+
+    return render_template(
+        'history_detail.html',
+        current_user=current_user,
+        identification=identification,
+        result=result_data
+    )
 
 @app.route('/api/feedback', methods=['POST'])
 def submit_feedback():
@@ -1234,6 +1987,10 @@ def upload_file():
                 db.session.commit()
                 identification_id = identification.id
                 logger.info(f"Saved identification to history for user {current_user.email}")
+
+                new_badges = award_badges_for_user(current_user)
+                for badge in new_badges:
+                    flash(f"{badge.badge_icon} New badge unlocked: {badge.badge_name}!", 'success')
             except Exception as e:
                 logger.error(f"Error saving identification to history: {str(e)}")
                 # Don't fail the request if history save fails
@@ -1315,6 +2072,413 @@ def test_map():
 def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy', 'message': 'WildID API is running'})
+
+@app.route('/community')
+def community_feed():
+    current_user = auth.get_current_user()
+    page = request.args.get('page', 1, type=int)
+    per_page = 9
+
+    query = CommunityPost.query.order_by(CommunityPost.created_at.desc())
+    pagination = db.paginate(query, page=page, per_page=per_page, error_out=False)
+    posts = [build_post_preview(post, current_user) for post in pagination.items]
+    my_post_count = current_user.community_posts.count() if current_user else 0
+
+    return render_template(
+        'community/index.html',
+        current_user=current_user,
+        posts=posts,
+        pagination=pagination,
+        my_post_count=my_post_count
+    )
+
+
+@app.route('/community/map')
+def community_map():
+    current_user = auth.get_current_user()
+    focus_id = request.args.get('focus', type=int)
+    posts_query = CommunityPost.query.filter(
+        CommunityPost.latitude.isnot(None),
+        CommunityPost.longitude.isnot(None)
+    ).order_by(CommunityPost.created_at.desc()).limit(500)
+    posts = [build_post_preview(post, current_user) for post in posts_query]
+    return render_template(
+        'community/map.html',
+        current_user=current_user,
+        map_posts=posts,
+        focus_id=focus_id
+    )
+
+
+@app.route('/quests')
+def quest_board():
+    current_user = auth.get_current_user()
+    stats = calculate_user_badge_stats(current_user.id) if current_user else {}
+    earned = {}
+    if current_user:
+        earned = {
+            badge.badge_key: badge
+            for badge in UserBadge.query.filter_by(user_id=current_user.id)
+        }
+
+    quest_entries = []
+    for quest in QUEST_DEFINITIONS:
+        progress, achieved = evaluate_badge_progress(quest, stats) if current_user else (0, False)
+        quest_entries.append({
+            'definition': quest,
+            'progress': progress,
+            'achieved': achieved,
+            'awarded_at': earned.get(quest['key']).awarded_at if achieved and quest['key'] in earned else None
+        })
+
+    return render_template(
+        'quests.html',
+        current_user=current_user,
+        quests=quest_entries
+    )
+
+
+@app.route('/community/new', methods=['GET', 'POST'])
+def community_new():
+    current_user = auth.get_current_user()
+
+    if not current_user:
+        flash('Please sign in to share your sightings.', 'info')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        title = (request.form.get('title', '') or '').strip()[:140]
+        description = (request.form.get('description', '') or '').strip()[:1200]
+        species = (request.form.get('species', '') or '').strip()[:120]
+        location_input = (request.form.get('location_name', '') or '').strip()
+        file = request.files.get('image')
+
+        if not file or not file.filename:
+            flash('Please upload an image of your sighting.', 'error')
+            return redirect(url_for('community_new'))
+
+        if not allowed_file(file.filename):
+            flash('Unsupported file type. Please upload PNG, JPG, JPEG, GIF, BMP, or WEBP.', 'error')
+            return redirect(url_for('community_new'))
+
+        temp_path = None
+        try:
+            temp_path, _ = create_secure_temp_file(file)
+            if not validate_image(temp_path):
+                flash('The uploaded image appears to be invalid. Please try another file.', 'error')
+                return redirect(url_for('community_new'))
+
+            image_base64 = encode_image_to_base64(temp_path)
+        except Exception as exc:
+            logger.error(f"Failed to process community image upload: {exc}")
+            flash('Unable to process your image. Please try again.', 'error')
+            return redirect(url_for('community_new'))
+        finally:
+            if temp_path:
+                cleanup_temp_file(temp_path)
+
+        location_name, latitude, longitude, location_source, user_location_failed = determine_post_location(
+            location_input, image_base64, title, description, species
+        )
+        if user_location_failed and not location_name:
+            flash('We could not recognize that location. The post will still be shared without a map pin.', 'warning')
+
+        post = CommunityPost(
+            user_id=current_user.id,
+            title=title or None,
+            description=description or None,
+            species=species or None,
+            image_data=image_base64,
+            image_mime=file.mimetype or 'image/jpeg',
+            location_name=location_name,
+            latitude=latitude,
+            longitude=longitude,
+            location_source=location_source
+        )
+
+        db.session.add(post)
+        db.session.commit()
+
+        award_badges_for_user(current_user)
+
+        flash('Your sighting has been shared with the community!', 'success')
+        return redirect(url_for('community_detail', post_id=post.id))
+
+    return render_template('community/new.html', current_user=current_user)
+
+
+@app.route('/community/<int:post_id>/edit', methods=['GET', 'POST'])
+def community_edit(post_id):
+    current_user = auth.get_current_user()
+    if not current_user:
+        flash('Please sign in to edit your sighting.', 'info')
+        return redirect(url_for('login'))
+
+    post = CommunityPost.query.get_or_404(post_id)
+    if post.user_id != current_user.id:
+        abort(403)
+
+    if request.method == 'POST':
+        title = (request.form.get('title', '') or '').strip()[:140]
+        description = (request.form.get('description', '') or '').strip()[:1200]
+        species = (request.form.get('species', '') or '').strip()[:120]
+        location_input = request.form.get('location_name', '')
+        file = request.files.get('image')
+
+        image_base64 = post.image_data
+        image_mime = post.image_mime
+
+        temp_path = None
+        if file and file.filename:
+            if not allowed_file(file.filename):
+                flash('Unsupported file type. Please upload PNG, JPG, JPEG, GIF, BMP, or WEBP.', 'error')
+                return redirect(url_for('community_edit', post_id=post.id))
+
+            try:
+                temp_path, _ = create_secure_temp_file(file)
+                if not validate_image(temp_path):
+                    flash('The uploaded image appears to be invalid. Please try another file.', 'error')
+                    return redirect(url_for('community_edit', post_id=post.id))
+
+                image_base64 = encode_image_to_base64(temp_path)
+                image_mime = file.mimetype or 'image/jpeg'
+            except Exception as exc:
+                logger.error(f"Failed to process community edit upload: {exc}")
+                flash('Unable to process your new image. Please try again.', 'error')
+                return redirect(url_for('community_edit', post_id=post.id))
+            finally:
+                if temp_path:
+                    cleanup_temp_file(temp_path)
+
+        location_name, latitude, longitude, location_source, user_location_failed = determine_post_location(
+            location_input, image_base64, title, description, species, current_post=post
+        )
+        if user_location_failed and not location_name:
+            flash('We could not recognize that location. Your changes are saved without updating the map pin.', 'warning')
+
+        post.title = title or post.title
+        post.description = description or None
+        post.species = species or None
+        post.image_data = image_base64
+        post.image_mime = image_mime
+        post.location_name = location_name
+        post.latitude = latitude
+        post.longitude = longitude
+        post.location_source = location_source
+        post.updated_at = datetime.utcnow()
+
+        db.session.commit()
+        award_badges_for_user(current_user)
+
+        flash('Your sighting has been updated.', 'success')
+        return redirect(url_for('community_detail', post_id=post.id))
+
+    return render_template(
+        'community/edit.html',
+        current_user=current_user,
+        post=post,
+        current_image_url=get_data_uri(post.image_mime, post.image_data)
+    )
+
+
+@app.route('/community/<int:post_id>/delete', methods=['POST'])
+def community_delete(post_id):
+    current_user = auth.get_current_user()
+    if not current_user:
+        flash('Please sign in to delete your sighting.', 'info')
+        return redirect(url_for('login'))
+
+    post = CommunityPost.query.get_or_404(post_id)
+    if post.user_id != current_user.id:
+        abort(403)
+
+    db.session.delete(post)
+    db.session.commit()
+
+    flash('Your sighting has been deleted.', 'success')
+    return redirect(url_for('community_feed'))
+
+
+@app.route('/community/<int:post_id>')
+def community_detail(post_id):
+    post = CommunityPost.query.get_or_404(post_id)
+    current_user = auth.get_current_user()
+
+    post_data = build_post_detail(post, current_user)
+    related_posts = (
+        CommunityPost.query
+        .filter(CommunityPost.id != post.id)
+        .order_by(CommunityPost.created_at.desc())
+        .limit(4)
+        .all()
+    )
+    related_previews = [build_post_preview(related, current_user) for related in related_posts]
+
+    return render_template(
+        'community/detail.html',
+        current_user=current_user,
+        post=post_data,
+        related_posts=related_previews
+    )
+
+
+@app.route('/community/<int:post_id>/like', methods=['POST'])
+def community_toggle_like(post_id):
+    current_user = auth.get_current_user()
+    if not current_user:
+        message = 'Please sign in to like posts.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 401
+        flash(message, 'info')
+        return redirect(url_for('login'))
+
+    post = CommunityPost.query.get_or_404(post_id)
+    existing = PostLike.query.filter_by(user_id=current_user.id, post_id=post.id).first()
+
+    if existing:
+        db.session.delete(existing)
+        action = 'unliked'
+    else:
+        like = PostLike(user_id=current_user.id, post_id=post.id)
+        db.session.add(like)
+        action = 'liked'
+
+    db.session.commit()
+
+    payload = {
+        'success': True,
+        'action': action,
+        'likes': post.like_count(),
+        'saves': post.bookmark_count(),
+        'comments': post.comment_count()
+    }
+
+    if wants_json_response():
+        return jsonify(payload)
+
+    flash('Post liked!' if action == 'liked' else 'Like removed.', 'success')
+    return redirect(url_for('community_detail', post_id=post.id))
+
+
+@app.route('/community/<int:post_id>/bookmark', methods=['POST'])
+def community_toggle_bookmark(post_id):
+    current_user = auth.get_current_user()
+    if not current_user:
+        message = 'Please sign in to save posts.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 401
+        flash(message, 'info')
+        return redirect(url_for('login'))
+
+    post = CommunityPost.query.get_or_404(post_id)
+    existing = PostBookmark.query.filter_by(user_id=current_user.id, post_id=post.id).first()
+
+    if existing:
+        db.session.delete(existing)
+        action = 'unsaved'
+    else:
+        bookmark = PostBookmark(user_id=current_user.id, post_id=post.id)
+        db.session.add(bookmark)
+        action = 'saved'
+
+    db.session.commit()
+
+    # Recalculate badges for the post owner
+    if post.author:
+        award_badges_for_user(post.author)
+
+    payload = {
+        'success': True,
+        'action': action,
+        'likes': post.like_count(),
+        'saves': post.bookmark_count(),
+        'comments': post.comment_count()
+    }
+
+    if wants_json_response():
+        return jsonify(payload)
+
+    flash('Post saved!' if action == 'saved' else 'Post removed from saved items.', 'success')
+    return redirect(url_for('community_detail', post_id=post.id))
+
+
+@app.route('/community/<int:post_id>/share', methods=['POST'])
+def community_record_share(post_id):
+    post = CommunityPost.query.get_or_404(post_id)
+    current_user = auth.get_current_user()
+
+    share = PostShare(
+        post_id=post.id,
+        user_id=current_user.id if current_user else None
+    )
+    db.session.add(share)
+    db.session.commit()
+
+    if post.author:
+        award_badges_for_user(post.author)
+
+    counts = {
+        'likes': post.like_count(),
+        'saves': post.bookmark_count(),
+        'shares': post.share_count(),
+        'comments': post.comment_count()
+    }
+    return jsonify({'success': True, 'counts': counts})
+
+
+@app.route('/community/<int:post_id>/comment', methods=['POST'])
+def community_add_comment(post_id):
+    current_user = auth.get_current_user()
+    if not current_user:
+        message = 'Please sign in to comment.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 401
+        flash(message, 'info')
+        return redirect(url_for('login'))
+
+    post = CommunityPost.query.get_or_404(post_id)
+    if request.is_json:
+        payload = request.get_json(silent=True) or {}
+        body = (payload.get('comment') or '').strip()
+    else:
+        body = (request.form.get('comment') or '').strip()
+
+    if not body:
+        message = 'Comment cannot be empty.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 400
+        flash(message, 'error')
+        return redirect(url_for('community_detail', post_id=post.id))
+
+    if len(body) > 1000:
+        message = 'Comment is too long. Please keep it under 1000 characters.'
+        if wants_json_response():
+            return jsonify({'success': False, 'message': message}), 400
+        flash(message, 'error')
+        return redirect(url_for('community_detail', post_id=post.id))
+
+    comment = PostComment(user_id=current_user.id, post_id=post.id, body=body)
+    db.session.add(comment)
+    db.session.commit()
+
+    if wants_json_response():
+        return jsonify({
+            'success': True,
+            'comment': {
+                'id': comment.id,
+                'body': comment.body,
+                'author_display': get_display_name(current_user),
+                'created_at': comment.created_at.strftime('%b %d, %Y %I:%M %p')
+            },
+            'counts': {
+                'likes': post.like_count(),
+                'saves': post.bookmark_count(),
+                'comments': post.comment_count()
+            }
+        })
+
+    flash('Comment added!', 'success')
+    return redirect(url_for('community_detail', post_id=post.id))
 
 if __name__ == '__main__':
     # Get port from environment or default to 3000

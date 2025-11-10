@@ -136,3 +136,4 @@ docker exec -it wildid-db psql -U wildid_user -d wildid
 
 **Need more help?** Check out **DOCKER_SETUP.md** for the complete guide!
 
+

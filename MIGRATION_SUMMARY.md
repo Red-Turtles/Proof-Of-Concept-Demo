@@ -315,3 +315,4 @@ The app is cleaner, more user-friendly, and ready for you to add Google reCAPTCH
 
 Let me know if you need any clarification or want to add those additional features. Happy coding! 🚀
 
+

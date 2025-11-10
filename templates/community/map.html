@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <title>WildID Community Map</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body class="community-page community-map-page">
+  <nav class="header-nav">
+    <div class="nav-container">
+      <div class="logo">
+        <span class="logo-icon">🍃</span>
+        <span class="logo-text">WildID</span>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="nav-link" data-transition="true">Home</a>
+        <a href="/discovery" class="nav-link" data-transition="true">Discovery</a>
+        <a href="/community" class="nav-link" data-transition="true">Community</a>
+        <a href="/community/map" class="nav-link active" data-transition="true">Community Map</a>
+        <a href="/quests" class="nav-link" data-transition="true">Quests</a>
+        {% if current_user %}
+        <div class="profile-menu">
+          <a href="/profile" class="nav-link profile-toggle" data-transition="true">Profile</a>
+          <div class="profile-dropdown">
+            <a href="/profile" data-transition="true">View Profile</a>
+            <a href="/history" data-transition="true">History</a>
+            <hr class="dropdown-divider" />
+            <form action="/auth/logout" method="post" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit">Sign Out</button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <a href="/auth/login" class="nav-link" data-transition="true">Sign In</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <main class="community-map-wrapper">
+    <section class="community-map-hero">
+      <div>
+        <h1>Community Sightings Map</h1>
+        <p>Explore wildlife sightings shared by the WildID community. Click a pin to preview the photo and jump into the full story.</p>
+      </div>
+      <div class="map-controls">
+        <a href="/community/new" class="hero-btn primary" data-transition="true">
+          <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h3v2h-3v3h-2v-3H8v-2h3V8h2v3z" fill="currentColor"/>
+          </svg>
+          Share a Sighting
+        </a>
+        <a href="/community" class="hero-btn secondary" data-transition="true">
+          <svg class="icon icon-lg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 11a4 4 0 1 0-3.76-5.3 4 4 0 0 0-5.48 0A4 4 0 1 0 8 11c-4 0-7 2-7 5v3h22v-3c0-3-3-5-7-5z" fill="currentColor"/>
+          </svg>
+          View Community Feed
+        </a>
+      </div>
+    </section>
+
+    {% if map_posts %}
+    <div id="community-map" role="region" aria-label="Community map with wildlife sightings"></div>
+    {% else %}
+    <div class="map-empty-state">
+      <span style="font-size:48px;">🗺️</span>
+      <h2>No mapped sightings yet</h2>
+      <p>Be the first to pin a sighting by sharing the location when you upload a new photo.</p>
+      <a href="/community/new" class="hero-btn primary" data-transition="true">Share a Sighting</a>
+    </div>
+    {% endif %}
+  </main>
+
+  <footer>
+    <div class="footer-content">
+      <p>WildID • Wildlife Identification • Auto file cleanup • Interactive habitat mapping</p>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script nonce="{{ csp_nonce }}">
+    const mapElement = document.getElementById('community-map');
+    const mapPosts = {{ map_posts|tojson }};
+    const focusId = {{ focus_id or 'null' }};
+
+    const escapeHtml = (value = '') =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    window.addEventListener('load', () => {
+      try {
+      if (!mapElement) {
+        console.warn('Community map element missing.');
+        return;
+      }
+
+      if (typeof L === 'undefined') {
+        mapElement.innerHTML = '<div class="map-empty-state"><h2>Map failed to load</h2><p>Please check your internet connection and try again.</p></div>';
+        console.error('Leaflet library failed to load. Map cannot be rendered.');
+        return;
+      }
+
+      const normalizePosts = (posts) => posts.map((post) => ({
+        ...post,
+        latitude: Number(post.latitude),
+        longitude: Number(post.longitude)
+      }));
+
+      const postsWithCoords = normalizePosts(mapPosts || []).filter((post) =>
+        Number.isFinite(post.latitude) && Number.isFinite(post.longitude)
+      );
+
+      mapElement.innerHTML = '';
+      const map = L.map('community-map', { scrollWheelZoom: true }).setView([20, 0], 2);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      if (!postsWithCoords.length) {
+        const message = L.control({ position: 'topright' });
+        message.onAdd = function () {
+          const div = L.DomUtil.create('div');
+          div.innerHTML = '<div class="map-empty-state" style="box-shadow:none;"><span style="font-size:32px;">📍</span><h3>No mapped sightings yet</h3><p>Add a location when you share a sighting to place it here.</p></div>';
+          div.style.background = 'transparent';
+          div.style.pointerEvents = 'none';
+          return div;
+        };
+        message.addTo(map);
+        return;
+      }
+
+      const bounds = [];
+      let focusMarker = null;
+
+      postsWithCoords.forEach((post) => {
+        const marker = L.marker([post.latitude, post.longitude]).addTo(map);
+        bounds.push([post.latitude, post.longitude]);
+
+        const popupHtml = `
+          <div class="map-popup">
+            <img src="${post.image_url}" alt="${escapeHtml(post.title || 'Community post')} preview" class="popup-preview" />
+            <h3>${escapeHtml(post.title || 'Wildlife Sighting')}</h3>
+            ${post.location_name ? `<p><strong>${escapeHtml(post.location_name)}</strong></p>` : ''}
+            <p>${post.species ? `<strong>${escapeHtml(post.species)}</strong><br/>` : ''}${escapeHtml(post.description || '')}</p>
+            <a href="/community/${post.id}" data-transition="true">View full post</a>
+          </div>
+        `;
+
+        marker.bindPopup(popupHtml);
+
+        if (focusId && post.id === focusId) {
+          focusMarker = marker;
+        }
+      });
+
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [40, 40] });
+      } else if (bounds.length === 1) {
+        map.setView(bounds[0], 9);
+      }
+
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 200);
+
+      if (focusMarker) {
+        focusMarker.openPopup();
+        map.setView(focusMarker.getLatLng(), 10);
+      }
+      } catch (err) {
+        console.error('Failed to render community map', err);
+        mapElement.innerHTML = '<div class="map-empty-state"><h2>Unable to render the map</h2><p>Please open the browser console and share the error with us.</p></div>';
+      }
+    });
+  </script>
+</body>
+</html>
+

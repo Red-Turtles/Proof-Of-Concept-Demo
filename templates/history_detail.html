@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <title>{{ identification.common_name or 'Identification Detail' }} - WildID</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pIVpCq5/7Y6F+h4Jk3EL5PyB4tS6Tn6kki0eM7F9j1WFzsDmJx7HwXKc7aYidIyh67tKi37gZoe1zYx4V5lrkg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    .detail-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 32px;
+    }
+
+    .detail-image-card {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
+    }
+
+    .detail-image-card img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .detail-info {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .detail-info h1 {
+      margin-top: 0;
+      font-size: 32px;
+      color: #1f2937;
+    }
+
+    .detail-info h2 {
+      font-size: 20px;
+      color: #64748b;
+      font-style: italic;
+      margin-top: 4px;
+    }
+
+    .detail-metadata {
+      margin: 24px 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .meta-line {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: #475569;
+    }
+
+    .meta-line i {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: rgba(45, 106, 79, 0.12);
+      color: #2d6a4f;
+    }
+
+    .detail-sections {
+      margin-top: 32px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .detail-section {
+      background: #f8fafc;
+      border-radius: 14px;
+      padding: 20px 24px;
+    }
+
+    .detail-section h3 {
+      margin-top: 0;
+      font-size: 18px;
+      color: #0f172a;
+    }
+
+    .detail-section p {
+      margin: 8px 0 0;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    .detail-actions {
+      margin-top: 32px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .detail-actions a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .detail-actions a.primary {
+      background: #2d6a4f;
+      color: white;
+      box-shadow: 0 10px 18px rgba(45, 106, 79, 0.2);
+    }
+
+    .detail-actions a.secondary {
+      background: rgba(45, 106, 79, 0.08);
+      color: #2d6a4f;
+      border: 1px solid rgba(45, 106, 79, 0.2);
+    }
+
+    .detail-actions a:hover {
+      transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+      .detail-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="header-nav">
+    <div class="nav-container">
+      <div class="logo">
+        <span class="logo-icon">🍃</span>
+        <span class="logo-text">WildID</span>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/discovery" class="nav-link">Discovery</a>
+        <a href="/community" class="nav-link" data-transition="true">Community</a>
+        <a href="/community/map" class="nav-link" data-transition="true">Community Map</a>
+        <a href="/quests" class="nav-link" data-transition="true">Quests</a>
+        {% if current_user %}
+          <div class="profile-menu">
+            <a href="/profile" class="nav-link profile-toggle" data-transition="true">Profile</a>
+            <div class="profile-dropdown">
+              <a href="/profile" data-transition="true">View Profile</a>
+              <a href="/history" data-transition="true">History</a>
+              <hr class="dropdown-divider" />
+              <form action="/auth/logout" method="post" class="logout-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit">Sign Out</button>
+              </form>
+            </div>
+          </div>
+        {% else %}
+          <a href="/auth/login" class="nav-link" data-transition="true">Sign In</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <div class="detail-container">
+    <div class="detail-image-card">
+      <img src="data:{{ identification.image_mime }};base64,{{ identification.image_data }}" alt="{{ identification.common_name or 'Animal identification' }}" />
+    </div>
+
+    <div class="detail-info">
+      <h1>{{ identification.common_name or 'Unknown Species' }}</h1>
+      {% if identification.species %}
+        <h2>{{ identification.species }}</h2>
+      {% endif %}
+
+      <div class="detail-metadata">
+        <div class="meta-line"><i class="fas fa-calendar"></i> Identified on {{ identification.created_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+        {% if identification.confidence %}
+          <div class="meta-line"><i class="fas fa-bullseye"></i> {{ identification.confidence|capitalize }} confidence</div>
+        {% endif %}
+        {% if identification.conservation_status %}
+          <div class="meta-line"><i class="fas fa-leaf"></i> Conservation status: {{ identification.conservation_status }}</div>
+        {% endif %}
+        {% if identification.animal_type %}
+          <div class="meta-line"><i class="fas fa-paw"></i> Animal type: {{ identification.animal_type }}</div>
+        {% endif %}
+      </div>
+
+      <div class="detail-sections">
+        {% if result.description %}
+        <div class="detail-section">
+          <h3>Identification Summary</h3>
+          <p>{{ result.description }}</p>
+        </div>
+        {% endif %}
+
+        {% if result.notes %}
+        <div class="detail-section">
+          <h3>Additional Notes</h3>
+          <p>{{ result.notes }}</p>
+        </div>
+        {% endif %}
+
+        {% if identification.feedback_at %}
+        <div class="detail-section">
+          <h3>Your Feedback</h3>
+          <p>You marked this identification as <strong>{{ identification.user_feedback }}</strong> on {{ identification.feedback_at.strftime('%B %d, %Y at %I:%M %p') }}.</p>
+          {% if identification.feedback_comment %}
+            <p style="margin-top:8px; color:#334155;">“{{ identification.feedback_comment }}”</p>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="detail-actions">
+        <a href="/discovery" class="primary" data-transition="true"><i class="fas fa-upload"></i> Identify another image</a>
+        <a href="/history" class="secondary" data-transition="true"><i class="fas fa-arrow-left"></i> Back to history</a>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-content">
+      <p>WildID • Wildlife Identification • Auto file cleanup • Interactive habitat mapping</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+

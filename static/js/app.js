@@ -2,6 +2,11 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Animal Identifier App loaded');
 
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (csrfMeta && !window.csrfToken) {
+        window.csrfToken = csrfMeta.getAttribute('content');
+    }
+
     const TRANSITION_DURATION = 650;
     let transitionOverlay = document.querySelector('.page-transition');
 
@@ -101,12 +106,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Get elements
-    const fileInput = document.getElementById('file-input');
+    const fileInput = document.getElementById('file-input') || document.querySelector('.compose-form input[type="file"]');
     const uploadArea = document.querySelector('.upload-area');
     const fileInfo = document.getElementById('file-info');
     const fileName = document.getElementById('file-name');
     const removeFileBtn = document.getElementById('remove-file');
-    const submitBtn = document.getElementById('submit-btn');
+    const submitBtn = document.getElementById('submit-btn') || document.querySelector('.compose-form button.primary[type="submit"]');
+    const communityUploadName = document.getElementById('upload-filename');
     
     console.log('Elements found:', {
         fileInput: !!fileInput,
@@ -118,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Initialize submit button as disabled
-    if (submitBtn) {
+    if (submitBtn && submitBtn.id === 'submit-btn') {
         submitBtn.disabled = true;
         console.log('Submit button initialized as disabled');
     }
@@ -210,12 +216,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fileName) {
             fileName.textContent = file.name;
         }
+        if (communityUploadName) {
+            communityUploadName.textContent = file.name;
+        }
         if (fileInfo) {
             fileInfo.style.display = 'flex';
         }
-        if (submitBtn) {
+        if (submitBtn && submitBtn.id === 'submit-btn') {
             submitBtn.disabled = false;
             console.log('Submit button enabled');
+        }
+        if (uploadArea && uploadArea.classList) {
+            uploadArea.classList.add('has-file');
         }
         
         console.log('File selection completed successfully');
@@ -229,9 +241,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fileInfo) {
             fileInfo.style.display = 'none';
         }
-        if (submitBtn) {
+        if (communityUploadName) {
+            communityUploadName.textContent = 'No file selected';
+        }
+        if (submitBtn && submitBtn.id === 'submit-btn') {
             submitBtn.disabled = true;
             console.log('Submit button disabled');
+        }
+        if (uploadArea && uploadArea.classList) {
+            uploadArea.classList.remove('has-file');
         }
     }
     
@@ -249,5 +267,174 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    function updateCountsForSelector(selector, value) {
+        document.querySelectorAll(selector).forEach((element) => {
+            element.textContent = value;
+        });
+    }
+
+    function updateShareCounts(apiUrl, value) {
+        document.querySelectorAll(`[data-share-api="${apiUrl}"] .count`).forEach((element) => {
+            element.textContent = value;
+        });
+        updateCountsForSelector('.share-count', value);
+    }
+
+    async function recordShare(button) {
+        const apiUrl = button.getAttribute('data-share-api');
+        if (!apiUrl) {
+            return null;
+        }
+
+        try {
+            const csrfToken = window.csrfToken || csrfMeta?.getAttribute('content') || '';
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({})
+            });
+
+            if (!response.ok) {
+                console.warn('Share logging failed', response.status);
+                return null;
+            }
+
+            const data = await response.json();
+            if (data.success && data.counts && data.counts.shares !== undefined) {
+                updateShareCounts(apiUrl, data.counts.shares);
+            }
+            return data;
+        } catch (error) {
+            console.error('Error recording share', error);
+            return null;
+        }
+    }
+
+    function handleCommunityAction(button, url, actionType) {
+        if (!url) {
+            return;
+        }
+
+        const csrfToken = window.csrfToken || csrfMeta?.getAttribute('content');
+        button.disabled = true;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken || ''
+            },
+            body: JSON.stringify({})
+        })
+        .then((response) => response.json())
+        .then((data) => {
+            if (!data.success) {
+                window.alert(data.message || 'Unable to process request.');
+                return;
+            }
+
+            const counts = data.counts || data;
+
+            if (counts.likes !== undefined) {
+                document.querySelectorAll(`[data-action="toggle-like"][data-url="${url}"] .count`).forEach((el) => {
+                    el.textContent = counts.likes;
+                });
+                updateCountsForSelector('.like-count', counts.likes);
+            }
+
+            if (counts.saves !== undefined) {
+                document.querySelectorAll(`[data-action="toggle-bookmark"][data-url="${url}"] .count`).forEach((el) => {
+                    el.textContent = counts.saves;
+                });
+                updateCountsForSelector('.save-count', counts.saves);
+            }
+
+            if (counts.comments !== undefined) {
+                updateCountsForSelector('.comment-count', counts.comments);
+            }
+
+            const buttons = document.querySelectorAll(`[data-url="${url}"]`);
+            buttons.forEach((btn) => {
+                if (actionType === 'like') {
+                    if (data.action === 'liked') {
+                        btn.classList.add('is-active');
+                    } else {
+                        btn.classList.remove('is-active');
+                    }
+                } else if (actionType === 'bookmark') {
+                    if (data.action === 'saved') {
+                        btn.classList.add('is-active');
+                    } else {
+                        btn.classList.remove('is-active');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.error('Community action failed', error);
+            window.alert('Something went wrong. Please try again.');
+        })
+        .finally(() => {
+            button.disabled = false;
+        });
+    }
+
+    document.querySelectorAll('[data-action="toggle-like"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const url = button.getAttribute('data-url');
+            handleCommunityAction(button, url, 'like');
+        });
+    });
+
+    document.querySelectorAll('[data-action="toggle-bookmark"]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const url = button.getAttribute('data-url');
+            handleCommunityAction(button, url, 'bookmark');
+        });
+    });
+
+    document.querySelectorAll('[data-share-url]').forEach((button) => {
+        button.addEventListener('click', async (event) => {
+            event.preventDefault();
+            const shareUrl = button.getAttribute('data-share-url');
+            const apiUrl = button.getAttribute('data-share-api');
+            if (!shareUrl) {
+                return;
+            }
+
+            try {
+                if (navigator.share) {
+                    await navigator.share({
+                        title: 'WildID Community Sighting',
+                        url: shareUrl
+                    });
+                    await recordShare(button);
+                } else if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(shareUrl);
+                    await recordShare(button);
+                    window.alert('Link copied to clipboard!');
+                } else {
+                    window.prompt('Copy this link', shareUrl);
+                    await recordShare(button);
+                }
+            } catch (error) {
+                console.error('Share failed', error);
+                window.alert('Unable to share at the moment.');
+            }
+        });
+    });
+
+    document.querySelectorAll('.badge-progress-fill[data-progress]').forEach((bar) => {
+        const progress = bar.getAttribute('data-progress');
+        if (progress !== null) {
+            bar.style.width = `${progress}%`;
+        }
+    });
+
     console.log('Animal Identifier App initialized successfully');
 });

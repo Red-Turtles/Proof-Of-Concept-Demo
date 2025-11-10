@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="csrf-token" content="{{ csrf_token() }}" />
+  <title>Share a Sighting • WildID Community</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pIVpCq5/7Y6F+h4Jk3EL5PyB4tS6Tn6kki0eM7F9j1WFzsDmJx7HwXKc7aYidIyh67tKi37gZoe1zYx4V5lrkg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+  <nav class="header-nav">
+    <div class="nav-container">
+      <div class="logo">
+        <span class="logo-icon">🍃</span>
+        <span class="logo-text">WildID</span>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="nav-link" data-transition="true">Home</a>
+        <a href="/discovery" class="nav-link" data-transition="true">Discovery</a>
+        <a href="/community" class="nav-link" data-transition="true">Community</a>
+        <a href="/community/map" class="nav-link" data-transition="true">Community Map</a>
+        <a href="/quests" class="nav-link" data-transition="true">Quests</a>
+        {% if current_user %}
+        <div class="profile-menu">
+          <a href="/profile" class="nav-link profile-toggle" data-transition="true">Profile</a>
+          <div class="profile-dropdown">
+            <a href="/profile" data-transition="true">View Profile</a>
+            <a href="/history" data-transition="true">History</a>
+            <hr class="dropdown-divider" />
+            <form action="/auth/logout" method="post" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit">Sign Out</button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <a href="/auth/login" class="nav-link" data-transition="true">Sign In</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <main class="community-compose">
+    <section class="compose-card">
+      <h1>Share a new sighting</h1>
+      <p class="compose-subtitle">Upload a photo, add a caption, and inspire the WildID community.</p>
+
+      <form action="{{ url_for('community_new') }}" method="post" enctype="multipart/form-data" class="compose-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+        <div class="form-group">
+          <label for="title">Title <span>(optional)</span></label>
+          <input type="text" id="title" name="title" maxlength="140" placeholder="e.g. Curious Red Fox at Sunset" />
+        </div>
+
+        <div class="form-group">
+          <label for="location_name">Location <span>(optional)</span></label>
+          <input type="text" id="location_name" name="location_name" maxlength="180" placeholder="e.g. Serengeti National Park, Tanzania or 37.8651, -119.5383" />
+          <p class="hint">We’ll place your sighting on the community map. Leave blank if you’re unsure—we can attempt to estimate it.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="species">Species <span>(optional)</span></label>
+          <input type="text" id="species" name="species" maxlength="120" placeholder="e.g. Vulpes vulpes" />
+        </div>
+
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="5" maxlength="1200" placeholder="Tell the community about your sighting..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="image">Upload Photo</label>
+          <label class="upload-area" for="image">
+            <div class="upload-content">
+              <div class="upload-icon">📸</div>
+              <div class="upload-text">
+                <span class="upload-title">Click to upload or drag and drop</span>
+                <span class="upload-subtitle">PNG, JPG, JPEG, GIF, BMP, or WEBP (max 16MB)</span>
+                <span class="upload-meta" id="upload-filename">No file selected</span>
+              </div>
+              <div class="upload-actions">
+                <span>
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+                  </svg>
+                  0
+                </span>
+                <span>
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 4a2 2 0 0 0-2 2v14l8-3.5 8 3.5V6a2 2 0 0 0-2-2H6z" fill="currentColor"/>
+                  </svg>
+                  0
+                </span>
+                <span>
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M21 11.5a8.5 8.5 0 1 0-15.17 4.76L5 21l4.74-1.13A8.5 8.5 0 0 0 21 11.5z" fill="currentColor"/>
+                  </svg>
+                  0
+                </span>
+              </div>
+              <input type="file" id="image" name="image" accept=".png,.jpg,.jpeg,.gif,.bmp,.webp" required />
+            </div>
+          </label>
+        </div>
+
+        <div class="compose-actions">
+          <a href="{{ url_for('community_feed') }}" class="secondary" data-transition="true">Cancel</a>
+          <button type="submit" class="primary">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 21l21-9L2 3v7l15 2-15 2z" fill="currentColor"/>
+            </svg>
+            Share with Community
+          </button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-content">
+      <p>WildID • Wildlife Identification • Auto file cleanup • Interactive habitat mapping</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+
