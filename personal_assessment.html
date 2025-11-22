@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Lead Personal Assessment</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --accent: #c9492c;
+      --muted: rgba(255, 255, 255, 0.75);
+      --shadow: rgba(0, 0, 0, 0.15);
+      --bg-card: rgba(255, 255, 255, 0.08);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 2.5rem 1.25rem 3rem;
+      background: linear-gradient(135deg, #111926 20%, #1f2a40 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+    main {
+      width: min(960px, 100%);
+      background: rgba(15, 23, 42, 0.72);
+      border-radius: 22px;
+      padding: 2.5rem 3rem;
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(18px);
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1.5rem;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    header h1 {
+      font-size: clamp(2rem, 3vw, 2.7rem);
+      margin: 0;
+      line-height: 1.2;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 460px;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      padding: 1.2rem 1.4rem;
+      border-radius: 16px;
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+    .stat-label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+    .stat-value {
+      font-size: 1.9rem;
+      margin: 0.5rem 0 0;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    section {
+      margin-bottom: 2.5rem;
+    }
+    section h2 {
+      margin: 0 0 0.7rem;
+      font-size: 1.55rem;
+      letter-spacing: 0.03em;
+    }
+    section p {
+      margin: 0;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.92);
+    }
+    .timeline {
+      margin-top: 1rem;
+      border-left: 2px solid rgba(255, 255, 255, 0.2);
+      padding-left: 1.5rem;
+    }
+    .timeline-item {
+      margin-bottom: 1rem;
+      position: relative;
+    }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -1.75rem;
+      top: 0.4rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(201, 73, 44, 0.25);
+    }
+    .timeline-date {
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .timeline-detail {
+      margin: 0.3rem 0 0;
+    }
+    @media (max-width: 640px) {
+      main {
+        padding: 2rem;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .timeline {
+        border-left: none;
+        padding-left: 0;
+      }
+      .timeline-item::before {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Security & Documentation Lead, Fall Quarter Contribution Essay</h1>
+        <p>
+          Over 33.5 logged hours, I owned the security posture, documentation pipeline, and AI-assisted quality control
+          for our CSC&nbsp;394 project. The narrative below ties each milestone to my official time log and demonstrates how those hours translated into tangible group success.
+        </p>
+      </div>
+      <div class="stat-grid">
+        <article class="stat-card">
+          <span class="stat-label">Total Logged Hours</span>
+          <p class="stat-value">33.5</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Security Sessions</span>
+          <p class="stat-value">17</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Group Meetings</span>
+          <p class="stat-value">9</p>
+        </article>
+      </div>
+    </header>
+
+    <section>
+      <h2>Setting the Security Trajectory</h2>
+      <p>
+        I entered the quarter as our security lead and immediately framed expectations during the September 16 kick-off meeting (2.5 hours) where we divided roles and agreed on communications rhythms.
+        That foundation let me scrutinize each Cursor-generated pull request with healthy skepticism: on September 17 and 18 (two hours combined) I walked through the AI-written modules line by line, surfaced internal logging and temp-file weaknesses, and looped David in so fixes landed before demos. My routine became triage, double-check via ChatGPT, and then publish concise risk notes so the rest of the team could move quickly without sacrificing trust.
+      </p>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-date">Sep 16</div>
+          <p class="timeline-detail">Led role-definition meeting, assumed permanent security ownership.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Sep 17&ndash;18</div>
+          <p class="timeline-detail">Reviewed AI code, documented internal logging & secure-temp-file fixes, coordinated with David.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Sep 23</div>
+          <p class="timeline-detail">Facilitated Trello board rollout so every security follow-up was traceable.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Captcha & Threat-Mitigation Sprints</h2>
+      <p>
+        Mid-quarter I pivoted hard into authentication hardening. Between September 25 and October 11 (4.5 hours total) I used Cursor to benchmark CAPTCHA, reCAPTCHA, and hybrid flows, ultimately settling on an approach that matched our tech stack and user experience constraints.
+        The October 2 brainstorming session kept our backlog focused on genuine attack surfaces rather than hypothetical ones. After validating the plan, I spent ten concentrated hours across October 24, 25, November 1, 2, 6, and 7 implementing the CAPTCHA layer in the redesigned UI, writing a reproducible tutorial, and filming the security narrative for our proof-of-concept videos. Every artifact referenced the same threat model so documentation, code, and video stayed consistent.
+      </p>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-date">Sep 25 & Oct 2, 9, 11</div>
+          <p class="timeline-detail">Research, benchmarking, and prototype testing for CAPTCHA integration (4.5 hours).</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Oct 24 &amp; 25</div>
+          <p class="timeline-detail">Built implementation tutorial and wired CAPTCHA into the refreshed UI.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Nov 1&ndash;2</div>
+          <p class="timeline-detail">Ran repository-wide security analysis, documented speedbumps, and relayed fixes to David.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Nov 6&ndash;7</div>
+          <p class="timeline-detail">Designed security policy diagrams and recorded updated video segments for the final demo.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Documentation, Tutorials, and AI Enablement</h2>
+      <p>
+        My other major deliverable was a cohesive set of learning assets so teammates could reproduce every security upgrade.
+        Drawing on 8.5 hours from October 23, 24, and November 7, I paired Cursor prompts with my own testing notes to draft the Captcha Implementation tutorial, the design-doc security appendix, and the project manual entries that described how to adapt those defenses.
+        These artifacts did more than explain “what” we shipped—they captured why each decision mattered, which let classmates extend the work when they tackled achievements, badge systems, or user accounts on October 28.
+      </p>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-date">Oct 23</div>
+          <p class="timeline-detail">Converted earlier experiments into a step-by-step Captcha Implementation tutorial.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Oct 24</div>
+          <p class="timeline-detail">Documented the security architecture for midterm resubmission packets.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Nov 7</div>
+          <p class="timeline-detail">Expanded the security manual and aligned it with the updated video narrative.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Meeting Leadership & Final Delivery</h2>
+      <p>
+        I stayed visible in every checkpoint meeting (September 16 through November 10) to keep the team synchronized on security blockers and demo expectations.
+        On October 21 we mapped a resubmission plan that required everyone to author new tutorials; by October 25 we reconvened so I could confirm those documents dovetailed with my security revisions.
+        The November 4 meeting locked in the final demo story arc while I resubmitted a refreshed security pull request, and on November 10 I hosted our final review, scrubbed the finished video, and ensured every new feature was reflected in the project manual. I also handled uploading each demo with redundant links so the grader never lost access.
+        Those coordination touches may not appear in the codebase, but they preserved momentum whenever feedback forced us to pivot.
+      </p>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-date">Oct 21 & Oct 25</div>
+          <p class="timeline-detail">Led resubmission planning and documentation alignment meetings.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Oct 28</div>
+          <p class="timeline-detail">Facilitated bug triage and feature brainstorming (achievements, user accounts).</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Nov 4</div>
+          <p class="timeline-detail">Coordinated final demo requirements, resubmitted security PR, set clip deadlines.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-date">Nov 10</div>
+          <p class="timeline-detail">Ran final pre-submission review; validated video, documents, and manual updates.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Reflection</h2>
+      <p>
+        The through-line across all 33.5 hours is disciplined security ownership paired with tangible learning aids.
+        I proved that AI-generated code can be production-ready when paired with rigorous human auditing, clear documentation, and responsive collaboration.
+        By delivering hardened authentication, reusable tutorials, and consistent meeting leadership, I made our project safer, easier to adopt, and better documented—exactly the impact a security and documentation lead should have when the stakes are high and deadlines are tight.
+      </p>
+    </section>
+  </main>
+</body>
+</html>
+
