@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Lead Personal Assessment</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --accent: #c9492c;
+      --muted: rgba(255, 255, 255, 0.75);
+      --shadow: rgba(0, 0, 0, 0.15);
+      --bg-card: rgba(255, 255, 255, 0.08);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 2.5rem 1.25rem 3rem;
+      background: linear-gradient(135deg, #111926 20%, #1f2a40 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+    main {
+      width: min(960px, 100%);
+      background: rgba(15, 23, 42, 0.72);
+      border-radius: 22px;
+      padding: 2.5rem 3rem;
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(18px);
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1.5rem;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    header h1 {
+      font-size: clamp(2rem, 3vw, 2.7rem);
+      margin: 0;
+      line-height: 1.2;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 460px;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      padding: 1.2rem 1.4rem;
+      border-radius: 16px;
+      background: var(--bg-card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+    .stat-label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+    .stat-value {
+      font-size: 1.9rem;
+      margin: 0.5rem 0 0;
+      font-weight: 600;
+      color: var(--accent);
+    }
+      .essay {
+        font-size: 1.05rem;
+        line-height: 1.75;
+        color: rgba(255, 255, 255, 0.92);
+      }
+      .essay p {
+        margin: 0 0 1.5rem;
+        text-align: justify;
+        text-indent: 1.25rem;
+      }
+      .essay p:first-child {
+        text-indent: 0;
+      }
+      .essay strong {
+        color: var(--accent);
+      }
+    @media (max-width: 640px) {
+      main {
+        padding: 2rem;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Security & Documentation Lead, Fall Quarter Contribution Essay</h1>
+        <p>
+          Over 33.5 logged hours, I owned the security posture, documentation pipeline, and AI-assisted quality control
+          for our CSC&nbsp;394 project. The narrative below ties each milestone to my official time log and demonstrates how those hours translated into tangible group success.
+        </p>
+      </div>
+      <div class="stat-grid">
+        <article class="stat-card">
+          <span class="stat-label">Total Logged Hours</span>
+          <p class="stat-value">33.5</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Security Sessions</span>
+          <p class="stat-value">17</p>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Group Meetings</span>
+          <p class="stat-value">9</p>
+        </article>
+      </div>
+    </header>
+
+    <article class="essay">
+      <p>
+          Being one of the first CSC 394 students to lean on an AI collaborator all quarter was both exciting and a little unnerving.
+          I logged <strong>33.5 hours</strong> making sure our project stayed secure while everyone else could move fast.
+          During the <strong>September 16</strong> kickoff meeting (2.5 hours) I grabbed the security role, set up our Monday check-ins,
+          and promised the team I would keep an eye on anything Cursor dropped into the repository.
+      </p>
+      <p>
+          From day one I was skeptical of AI-written code, so I built a routine around double-checking it.
+          On <strong>September 17 and 18</strong> I spent two hours combing through Cursor’s commits, flagged weak internal logging and sketchy temp-file handling,
+          and ran the same snippets through ChatGPT just to see whether another model spotted anything different.
+          By the <strong>September 23</strong> meeting I had a Trello board in place so David and I could track every follow-up before it hit a demo.
+      </p>
+      <p>
+          Mid-quarter I dove headfirst into authentication.
+          Between <strong>September 25 and October 11</strong> (4.5 hours) I used Cursor to research CAPTCHA versus reCAPTCHA, tested quick prototypes, and kept the October 2 group brainstorm grounded in real attack paths.
+          That homework turned into a ten-hour push across <strong>October 24, 25, November 1, 2, 6, and 7</strong>, where I wired the CAPTCHA flow into our refreshed UI, recorded a security explainer for the proof-of-concept video, and made sure every change lined up with our threat model.
+      </p>
+      <p>
+          Outside the raw security work, I spent a lot of time teaching the rest of the team how to repeat what I did.
+          Over <strong>October 23, 24, and November 7</strong> (8.5 hours) I turned my lab notes into the Captcha Implementation tutorial, added my section to the design docs,
+          and kept the project manual in sync so anyone could extend the same protections when we started talking about achievements, badges, and user accounts on <strong>October 28</strong>.
+      </p>
+      <p>
+          I also stayed plugged into every meeting so people always knew where security stood.
+          On <strong>October 21</strong> we mapped out the midterm resubmission plan, on <strong>October 25</strong> we checked documentation progress, and on <strong>October 28</strong> we triaged bugs and brainstormed the next set of features.
+          By <strong>November 4</strong> I had a refreshed security pull request ready, clip deadlines set for the final video, and during the <strong>November 10</strong> final check-in I rewatched the demo, confirmed the project manual matched the new app features, and uploaded redundant copies of the video so nothing would get lost.
+          That mix of AI-assisted audits, hands-on testing, and constant communication is what let me keep the security side steady while the rest of the team pushed the product forward.
+      </p>
+    </article>
+  </main>
+</body>
+</html>
+
